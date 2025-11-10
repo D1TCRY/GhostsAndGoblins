@@ -1,6 +1,9 @@
 from actor import Actor, Arena
 from Platform import Platform
+
+from guis import GUIComponent, Bar
 from status import Action, Direction, Sprite, SpriteCollection, State
+
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from Arthur import Arthur
@@ -39,6 +42,7 @@ class Zombie(Actor):
         x: int | float,
         y: int | float,
         *,
+        health: float = 70.0,
         width: int = 21,
         height: int = 32,
         speed: float = 1.0,
@@ -53,6 +57,8 @@ class Zombie(Actor):
         global ZOMBIE_WALK_R1, ZOMBIE_WALK_R2, ZOMBIE_WALK_R3
 
         self.name = name
+        self.health = health
+
         self.x = x
         self.y = y
         self.width = width
@@ -72,6 +78,7 @@ class Zombie(Actor):
         self.sprite_cycle_speed = int(sprite_cycle_speed)
 
 
+        # default properties
         self.sprites = SpriteCollection()
 
         self.sprites[(Action.EMERGING, Direction.LEFT)] = [
@@ -119,6 +126,19 @@ class Zombie(Actor):
         if not isinstance(value, (int, float)):
             raise TypeError("y must be an int or float")
         self.__y = float(value)
+
+    @property
+    def health(self) -> float:
+        return self.__health
+    @health.setter
+    def health(self, value: int | float):
+        if not isinstance(value, (int, float)):
+            raise TypeError("health must be an int or float")
+        self.__health = float(value)
+        if self.__health <= 0:
+            self._set_state_action(Action.DEAD)
+            self.walked_distance = 0.0
+            self.distance_to_walk = random.uniform(self.min_walk_distance, self.max_walk_distance)
 
     @property
     def width(self) -> int:
@@ -192,6 +212,26 @@ class Zombie(Actor):
         self.sprite_cycle_counter += 1
         return self.sprite_cycle_counter
 
+    @property
+    def gui(self) -> list[GUIComponent]:
+        bar_w, bar_h = self.width, 3
+        return [Bar(
+            name_id=self.name,
+            x=self.x,
+            y=self.y - bar_h - 1,
+            width=bar_w,
+            height=bar_h,
+            text="",
+            text_size=1,
+            text_color=(0,0,0,0),
+            background_color=(116, 16, 8),
+            bar_color=(128, 248, 96),
+            max_value=70,
+            value=self.health,
+            padding=0,
+            fixed=False
+        )]
+
     # ======== INTERFACE ========
     def pos(self) -> tuple[float, float]:
         return self.x, self.y
@@ -200,6 +240,9 @@ class Zombie(Actor):
         return self.width, self.height
 
     def move(self, arena: "Arena") -> None:
+        if self.state.action == Action.DEAD:
+            return
+
         borders = self._clamp_in_arena(arena)
         if borders["at_left"] and self.state.direction == Direction.LEFT:
             self.state.direction = Direction.RIGHT
@@ -220,12 +263,8 @@ class Zombie(Actor):
 
         elif self.state.action == Action.IMMERSING:
             if self._locked_anim_finished():
-                try:
-                    arena.kill(self)
-                except Exception:
-                    pass
+                self._set_state_action(Action.DEAD)
 
-        # y resta a contatto con il suolo come nel vecchio Zombie
         self._clamp_in_arena(arena)
 
     def sprite(self) -> "Sprite | None":  # type: ignore
@@ -240,15 +279,19 @@ class Zombie(Actor):
             case _:
                 return None
 
+    def hit(self, damage: float) -> None:
+        self.health -= damage
+
     # ======== HELPERS ========
     def _set_state_action(self, action: Action) -> None:
         if self.state.action != action:
             _ = self.reset_sprite_cycle_counter
-            # Aggiorna dimensioni secondo il primo frame della nuova action
-            first = self.sprites[(action, self.state.direction)][0]
-            self.y = self.y + self.height - first.height  # mantiene i piedi a terra
-            self.width = first.width
-            self.height = first.height
+            # update width, height, y based on the first sprite
+            if action not in (Action.DEAD,):
+                first = self.sprites[(action, self.state.direction)][0]
+                self.y = self.y + self.height - first.height  # keep on ground
+                self.width = first.width
+                self.height = first.height
             self.state.action = action
 
     def _looping_sprite_selection(self, sprites: list["Sprite"]) -> "Sprite":

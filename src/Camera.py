@@ -63,12 +63,15 @@ class Camera:
     def size(self) -> tuple[float, float]:
         return self.width, self.height
 
-
     def tick(self, arena):
-        if self.target and all(hasattr(self.target, attr) for attr in ("x", "y", "width", "height")):
-            self.view_x = self.target.x - self.width / 3.5
-            self.view_y = self.target.y - self.height / 2
-        
-            self.view_x = max(0, min(int(self.view_x), arena.size()[0] - self.width))
-            self.view_y = max(0, min(int(self.view_y), arena.size()[1] - self.height))
+        if self.target:
+            desired_x = self.target.x - self.width / 3.5
+            desired_y = self.target.y - self.height / 2
 
+            arena_w, arena_h = arena.size()
+
+            max_x = max(0.0, arena_w - self.width)
+            max_y = max(0.0, arena_h - self.height)
+
+            self.view_x = max(0.0, min(desired_x, max_x))
+            self.view_y = max(0.0, min(desired_y, max_y))

@@ -26,6 +26,10 @@ class Weapon(Actor):
         self.sprite_cycle_counter += 1
         return self.sprite_cycle_counter
 
+    @property
+    def damage(self) -> int:
+        raise NotImplementedError
+
     # ======== INTERFACE IMPLEMENTATION ========
     def pos(self) -> tuple[float, float]: ...
     def size(self) -> tuple[int, int]: ...

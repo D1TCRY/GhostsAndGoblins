@@ -27,6 +27,7 @@ class Torch(Weapon):
         y: float,
         direction: Direction,
         *,
+        damage: int = 50,
         speed: float = 7,
         gravity: float = 0.7,
         sprite_cycle_speed: int = 4
@@ -39,8 +40,10 @@ class Torch(Weapon):
         self.x = float(x)
         self.y = float(y)
         self.vx = speed if direction == Direction.RIGHT else -speed
-        self.vy = -7
+        self.vy = -5
         self.gravity = float(gravity)
+
+        self.damage = damage
 
         self.state = State(action=Action.ATTACKING, direction=direction)
         self.sprites = SpriteCollection()
@@ -164,6 +167,15 @@ class Torch(Weapon):
             raise TypeError("_alive must be a bool")
         self.__alive = bool(value)
 
+    @property
+    def damage(self) -> int:
+        return self.__damage
+    @damage.setter
+    def damage(self, value: int):
+        if not isinstance(value, int):
+            raise TypeError("damage must be an int")
+        self.__damage = int(value)
+
     def pos(self) -> tuple[float, float]:
         return self.x, self.y
 
@@ -183,14 +195,14 @@ class Torch(Weapon):
             self._despawn(arena)
             return
 
-        for actor in arena.actors():
+        """for actor in arena.actors():
             if isinstance(actor, Zombie) and self._overlap(actor):
                 try:
                     arena.kill(actor)
                 except Exception:
                     pass
                 self._despawn(arena)
-                return
+                return"""
 
 
         for actor in arena.actors():

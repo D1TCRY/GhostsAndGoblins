@@ -1,15 +1,19 @@
 from actor import Actor, Arena, check_collision, check_overlap
+from typing import TYPE_CHECKING
+if TYPE_CHECKING: from Game import Game
+
 from Platform import Platform
 from Ladder import Ladder
 from Torch import Torch
-from src.GraveStone import GraveStone
+from GraveStone import GraveStone
+from guis import GUIComponent, Bar
 
 from status import Sprite, State, Action, Direction, SpriteCollection
 
 import pathlib
 
 
-ARTHUR_SPRITE_PATH = pathlib.Path(__file__).parent / "data" / "textures" / "ghosts-goblins.png"
+ARTHUR_SPRITE_PATH = "https://fondinfo.github.io/sprites/ghosts-goblins.png"
 ARTHUR_SPRITE_WIDTH = 21
 ARTHUR_SPRITE_HEIGHT = 32
 
@@ -39,7 +43,9 @@ ARTHUR_SPRITE_JUMPING_L2: Sprite = Sprite(path=ARTHUR_SPRITE_PATH, x=305, y=29, 
 ARTHUR_SPRITE_CROUCHING_R: Sprite = Sprite(path=ARTHUR_SPRITE_PATH, x=224, y=52, width=21, height=22)
 ARTHUR_SPRITE_CROUCHING_L: Sprite = Sprite(path=ARTHUR_SPRITE_PATH, x=267, y=52, width=21, height=22)
 
-
+# CLIMBING
+ARTHUR_SPRITE_CLIMBING_R: Sprite = Sprite(path=ARTHUR_SPRITE_PATH, x=150, y=132, width=22, height=31)
+ARTHUR_SPRITE_CLIMBING_L: Sprite = Sprite(path=ARTHUR_SPRITE_PATH, x=340, y=132, width=22, height=31)
 
 
 class Arthur(Actor):
@@ -64,6 +70,8 @@ class Arthur(Actor):
 
         global ARTHUR_SPRITE_CROUCHING_R, ARTHUR_SPRITE_CROUCHING_L
 
+        global ARTHUR_SPRITE_CLIMBING_R, ARTHUR_SPRITE_CLIMBING_L
+
         self.name = name
         
         self.x = x
@@ -86,6 +94,7 @@ class Arthur(Actor):
         self.sprite_cycle_speed = 4
 
         self.grounded = False
+        self.laddered = False
         self.throw_cooldown = 0  # throw torch
 
         # Sprites
@@ -103,6 +112,11 @@ class Arthur(Actor):
         self.sprites[Action.CROUCHING, Direction.RIGHT] = [ARTHUR_SPRITE_CROUCHING_R]
         self.sprites[Action.CROUCHING, Direction.LEFT] = [ARTHUR_SPRITE_CROUCHING_L]
 
+        self.sprites[Action.CLIMBING, Direction.RIGHT] = [ARTHUR_SPRITE_CLIMBING_R, ARTHUR_SPRITE_CLIMBING_L]
+        self.sprites[Action.CLIMBING, Direction.LEFT] = [ARTHUR_SPRITE_CLIMBING_L, ARTHUR_SPRITE_CLIMBING_R]
+
+        self.sprites[Action.CLIMBING_POSE, Direction.RIGHT] = [ARTHUR_SPRITE_CLIMBING_R]
+        self.sprites[Action.CLIMBING_POSE, Direction.LEFT] = [ARTHUR_SPRITE_CLIMBING_L]
     
     # ======== ======== ======== ========
     # PROPERTIES
@@ -241,6 +255,15 @@ class Arthur(Actor):
         self.__grounded: bool = bool(value)
 
     @property
+    def laddered(self) -> bool:
+        return self.__laddered
+    @laddered.setter
+    def laddered(self, value: bool):
+        if not isinstance(value, bool):
+            raise TypeError("laddered must be boolean")
+        self.__laddered: bool = bool(value)
+
+    @property
     def throw_cooldown(self) -> int:
         return self.__throw_cooldown
     @throw_cooldown.setter
@@ -274,7 +297,7 @@ class Arthur(Actor):
     def size(self) -> tuple[int, int]:
         return self.width, self.height
 
-    def move(self, arena: Arena) -> None:
+    def move(self, arena: "Game") -> None:
         keys: list[str] = arena.current_keys()
         actors: list[Actor] = arena.actors()
 
@@ -282,7 +305,7 @@ class Arthur(Actor):
             self.throw_cooldown -= 1
 
         # --- LANCIO FIACCOLA ---
-        if "1" in keys and self.throw_cooldown == 0:
+        if "1" in keys and self.throw_cooldown == 0 and not self.laddered:
             offset_x = 10 if self.state.direction == Direction.RIGHT else -10
             spawn_x = self.x + (self.width // 2) + offset_x
             spawn_y = self.y + self.height * 0.1
@@ -297,29 +320,19 @@ class Arthur(Actor):
 
 
         # --- VERTICALE ---
-        laddered: Ladder | None = self.on_ladder(arena)
-        if laddered is not None:
-            self.grounded = False
-            self.y_step = 0.0
-            if "ArrowUp" in keys:
-                self.y_step = -2
-            if "ArrowDown" in keys:
-                self.y_step = 2
+        can_jump = self.grounded
 
-            self.y += self.y_step
-        else:
-            can_jump = self.grounded
+        if "ArrowUp" in keys and can_jump and not self.laddered:
+            self.y_step = -self.jump_speed
+            self._set_state_action(Action.JUMPING)
+        elif "ArrowDown" in keys and self.grounded:
+            self._set_state_action(Action.CROUCHING)
+        elif self.grounded:
+            self._set_state_action(Action.WALKING if self.x_step != 0.0 else Action.IDLE)
+        elif not self.laddered:
+            self._set_state_action(Action.JUMPING, reset=False)
 
-            if "ArrowUp" in keys and can_jump:
-                self.y_step = -self.jump_speed
-                self._set_state_action(Action.JUMPING)
-            elif "ArrowDown" in keys and self.grounded:
-                self._set_state_action(Action.CROUCHING)
-            elif self.grounded:
-                self._set_state_action(Action.WALKING if self.x_step != 0.0 else Action.IDLE)
-            else:
-                self._set_state_action(Action.JUMPING)
-
+        if not self.laddered:
             self.y_step += self.gravity
             self.y += self.y_step
 
@@ -333,17 +346,17 @@ class Arthur(Actor):
             self.x_step = self.speed
             self.state.direction = Direction.RIGHT
         elif self.state.action not in (Action.JUMPING, Action.CROUCHING):
-            self._set_state_action(Action.WALKING if self.x_step != 0.0 else Action.IDLE)
+            self._set_state_action(Action.WALKING if self.x_step != 0.0 else Action.IDLE, reset=False)
         self.x += self.x_step
 
 
-        self.grounded = False
-        for platform in [_ for _ in actors if isinstance(_, Platform)]:
-            if self.apply_clamp_on_platform(platform): # if landed
-                self.grounded = True
+        self.grounded = False   # if collision with platform, Game will update it
 
 
     def sprite(self) -> Sprite | None: # type: ignore
+        if (self.state.action, self.state.direction) not in self.sprites.__iter__():
+            return None
+
         list_sprites = self.sprites[self.state.action, self.state.direction]
 
         match self.state.action:
@@ -351,7 +364,25 @@ class Arthur(Actor):
             case Action.WALKING: return self._looping_sprite_selection(list_sprites)
             case Action.JUMPING: return self._locked_looping_sprite_selection(list_sprites)
             case Action.CROUCHING: return self._locked_looping_sprite_selection(list_sprites)
+            case Action.CLIMBING: return self._looping_sprite_selection(list_sprites)
+            case Action.CLIMBING_POSE: return self._locked_looping_sprite_selection(list_sprites)
             case _: return None
+
+    @property
+    def gui(self) -> list[GUIComponent]:
+        return [
+            Bar(
+                name_id="health_bar",
+                x=3, y=3, padding=1,
+                text="Health: {value}",
+                max_value=100,
+                value=self.health,
+                fixed=True
+            )
+        ]
+
+    def hit(self, damage: float) -> None:
+        self.health -= damage
     # ^^^^^^^^ ^^^^^^^^ ^^^^^^^^ ^^^^^^^^
     # INTERFACE IMPLEMENTATION 
     # ======== ======== ======== ========
@@ -359,30 +390,44 @@ class Arthur(Actor):
     # ======== ======== ======== ========
     # HELPER METHODS 
     # ........ ........ ........ ........
-    def on_ladder(self, arena: Arena) -> Ladder | None:
-        for ladder in [_ for _ in arena.actors() if isinstance(_, Ladder)]:
-            if ladder.check_collision(self): return ladder
-        return None
-
-    def on_platform(self, arena: Arena) -> Platform | None:
-        for platform in [_ for _ in arena.actors() if isinstance(_, Platform) and not isinstance(_, (Ladder,))]:
-            if platform.check_collision(self): return platform
-        return None
-
-    def apply_clamp_on_platform(self, platform: Platform) -> bool:
-        direction, dx, dy = platform.clamp(self)
+    def on_platform_collision(self, direction: Direction | None, dx: float, dy: float) -> None: # called by Game
         if direction is None:
-            return False
+            return
 
-        if dx: self.x += dx
-        if dy: self.y += dy
+        if dx:
+            self.x += dx
+        if dy:
+            self.y += dy
 
         if direction in (Direction.LEFT, Direction.RIGHT):
             self.x_step = 0.0
-            return False
         else:
             self.y_step = 0.0
-            return direction == Direction.UP
+            if direction == Direction.UP:
+                self.grounded = True
+                self.laddered = False
+
+    def on_ladder_collision(self, keys: list[str], ladder_pos: tuple[float, float], ladder_size: tuple[float, float]) -> None:
+        ladder_x, ladder_y = ladder_pos
+        ladder_width, ladder_height = ladder_size
+        inside_ladder: bool = ladder_y - self.height*0.85 < self.y < ladder_y + ladder_height
+
+        self.laddered = True
+        self.y_step = 0.0
+
+        if "ArrowUp" in keys:
+            self.y -= 2
+        elif "ArrowDown" in keys:
+            self.y += 2
+
+        if ("ArrowUp" in keys or "ArrowDown" in keys) and inside_ladder:
+            self._set_state_action(Action.CLIMBING, reset=False)
+        elif inside_ladder:
+            self._set_state_action(Action.CLIMBING_POSE)
+
+
+    def not_on_ladder_collision(self) -> None:
+        self.laddered = False
 
     def inside_arena(self, arena: Arena) -> bool:
         a_width, a_height = arena.size()
@@ -398,16 +443,20 @@ class Arthur(Actor):
         i = self.sprite_cycle_counter // self.__sprite_cycle_speed
         return sprites[i if i < len(sprites) else -1]
 
-    def _set_state_action(self, action: Action) -> None:
-        if self.state.action != action:
+    def _set_state_action(self, action: Action, *, reset: bool = True) -> None:
+        if self.state.action != action and reset:
             _ = self.reset_sprite_cycle_counter
 
         self.state.action = action
 
-        self.y = self.y + self.height - self.sprites[self.state.action, self.state.direction][0].height
+        if (self.state.action, self.state.direction) in self.sprites.__iter__():
+            self.y = self.y + self.height - self.sprites[self.state.action, self.state.direction][0].height
 
-        self.width = max(self.width, min(self.sprites[self.state.action, self.state.direction][0].width, 28))
-        self.height = self.sprites[self.state.action, self.state.direction][0].height
+            self.width = max(self.width, min(self.sprites[self.state.action, self.state.direction][0].width, 28))
+            self.height = self.sprites[self.state.action, self.state.direction][0].height
+
+            if self.laddered:
+                self.width = 17
 
     # ^^^^^^^^ ^^^^^^^^ ^^^^^^^^ ^^^^^^^^
     # HELPER METHODS

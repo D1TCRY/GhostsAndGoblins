@@ -7,10 +7,10 @@ class GUIComponent(object):
         raise NotImplementedError
 
     @property
-    def g2d(self):
+    def fixed(self):
         raise NotImplementedError
-    @g2d.setter
-    def g2d(self, value) -> None:
+    @fixed.setter
+    def fixed(self, value) -> None:
         raise NotImplementedError
 
     def g2d_draw(self, *args) -> None:

@@ -13,6 +13,8 @@ class Action(Enum):
     IMMERSING = auto()
     DEAD = auto()
     CLIMBING = auto()
+    CLIMBING_POSE = auto()
+    SPAWNING = auto()
 
     def __str__(self) -> str:
         return f"<{self.name.capitalize()}>"

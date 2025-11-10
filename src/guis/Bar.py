@@ -4,7 +4,6 @@ from collections.abc import Callable
 
 class Bar(GUIComponent):
     def __init__(self,
-        g2d,
         name_id: str,
         x: float = 5,
         y: float = 5,
@@ -12,14 +11,14 @@ class Bar(GUIComponent):
         height: float = 14,
         text: str = "Bar",
         text_size: int = 10,
-        text_color: tuple[int, int, int] = (248, 248, 248),
+        text_color: tuple[int, int, int] | tuple[int, int, int, int] = (248, 248, 248),
         background_color: tuple[int, int, int] = (116, 16, 8),
         bar_color: tuple[int, int, int] = (248, 128, 96),
         max_value: float = 1,
         value: float | Callable = 1,
-        padding: float = 1
+        padding: float = 1,
+        fixed: bool = True    # if True the position will be considered on canvas, else on arena
     ) -> None:
-        self.g2d = g2d
         self.name_id = name_id
         self.x = x
         self.y = y
@@ -33,15 +32,8 @@ class Bar(GUIComponent):
         self.bar_color = bar_color
         self.max_value = max_value
         self.value = value
+        self.fixed = fixed
 
-    @property
-    def g2d(self):
-        return self.__g2d
-    @g2d.setter
-    def g2d(self, value) -> None:
-        if not hasattr(value, "draw_rect") or not hasattr(value, "draw_text") or not hasattr(value, "set_color"):
-            raise TypeError("g2d must have draw_rect, draw_text and set_color methods")
-        self.__g2d = value
 
     @property
     def name_id(self) -> str:
@@ -115,7 +107,7 @@ class Bar(GUIComponent):
         return self.__text_color
     @text_color.setter
     def text_color(self, value: tuple[int, int, int]) -> None:
-        if not isinstance(value, tuple) or len(value) != 3 or not all(isinstance(_, int) for _ in value):
+        if not isinstance(value, tuple) or len(value) > 4 or not all(isinstance(_, int) for _ in value):
             raise TypeError("text_color must be a tuple of three integers")
         self.__text_color: tuple[int, int, int] = tuple(value)
 
@@ -124,7 +116,7 @@ class Bar(GUIComponent):
         return self.__background_color
     @background_color.setter
     def background_color(self, value: tuple[int, int, int]) -> None:
-        if not isinstance(value, tuple) or len(value) != 3 or not all(isinstance(_, int) for _ in value):
+        if not isinstance(value, tuple) or len(value) > 4 or not all(isinstance(_, int) for _ in value):
             raise TypeError("background_color must be a tuple of three integers")
         self.__background_color: tuple[int, int, int] = tuple(value)
 
@@ -171,6 +163,15 @@ class Bar(GUIComponent):
             raise TypeError("padding must be an int or float")
         self.__padding: float = float(value)
 
+    @property
+    def fixed(self) -> bool:
+        return self.__fixed
+    @fixed.setter
+    def fixed(self, value: bool) -> None:
+        if not isinstance(value, bool):
+            raise TypeError("fixed must be a boolean")
+        self.__fixed: bool = bool(value)
+
     def render_info(self, new_value: float = None):
         self.value = new_value if new_value is not None else self.value
 
@@ -200,31 +201,9 @@ class Bar(GUIComponent):
             },
             {
                 "type": "text",
+                "color": self.text_color,
                 "text": text,
                 "center": (center_x, center_y),
                 "font_size": self.text_size
             }
         ]
-
-    def g2d_draw(self, new_value: float = None) -> None:
-        self.value = new_value if new_value is not None else self.value
-
-        x, y = self.x, self.y
-        width, height = self.width, self.height
-
-        inner_x, inner_y = x+self.padding, y+self.padding
-        inner_width, inner_height = width-2*self.padding, height-2*self.padding
-        inner_real_width = inner_width * self.value / self.max_value
-
-        center_x, center_y = x + width/2, y + height/2
-
-        text = self.text.replace("{value}", str(int(round(self.value))))
-
-        self.g2d.set_color(self.background_color)
-        self.g2d.draw_rect(pos=(x, y), size=(width, height))
-
-        self.g2d.set_color(self.bar_color)
-        self.g2d.draw_rect(pos=(inner_x, inner_y), size=(inner_real_width, inner_height))
-
-        self.g2d.set_color(self.text_color)
-        self.g2d.draw_text(text=text, center=(center_x, center_y), size=self.text_size)

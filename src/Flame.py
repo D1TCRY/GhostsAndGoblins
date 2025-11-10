@@ -24,6 +24,7 @@ class Flame(Actor):
          x: float,
          y: float,
          *,
+         damage: int = 1,
          life_frames: int = 60,
          sprite_cycle_speed: int = 6
     ) -> None:
@@ -31,6 +32,8 @@ class Flame(Actor):
         self._ground_y = float(y)
         self._age = 0
         self.life_frames = int(life_frames)
+
+        self.damage = damage
 
         self.state = State(action=Action.IDLE, direction=Direction.RIGHT)
         self.sprites = SpriteCollection()
@@ -136,6 +139,15 @@ class Flame(Actor):
         self.__sprite_cycle_speed = int(value)
 
     @property
+    def damage(self) -> int:
+        return self.__damage
+    @damage.setter
+    def damage(self, value: int) -> None:
+        if not isinstance(value, (int, float)):
+            raise TypeError("damage must be a number")
+        self.__damage = int(value)
+
+    @property
     def _ground_y(self) -> float:
         return self.__ground_y
     @_ground_y.setter
@@ -239,13 +251,6 @@ class Flame(Actor):
                 self._ground_y = best_p.y
                 self.y = self._ground_y - self.height
             self._ground_snapped = True
-
-        for actor in list(arena.actors()):
-            if isinstance(actor, Zombie) and self._overlap(actor):
-                try:
-                    arena.kill(actor)
-                except Exception:
-                    pass
 
         if (not self._switched_to_small) and self._age >= self.life_frames // 2:
             self._switched_to_small = True
