@@ -1,7 +1,7 @@
-from actor import Actor, Arena
+from typing import TYPE_CHECKING
+if TYPE_CHECKING: from Game import Game
+from actor import Actor
 from status import Action, Direction, Sprite, SpriteCollection, State
-from Platform import Platform
-from Zombie import Zombie
 from Flame import Flame
 from Weapon import Weapon
 import pathlib
@@ -25,40 +25,94 @@ class Torch(Weapon):
     def __init__(self,
         x: float,
         y: float,
-        direction: Direction,
-        *,
         damage: int = 50,
         speed: float = 7,
         gravity: float = 0.7,
+        *,
+        owner: Actor = None,
+        action: Action = Action.ATTACKING,
+        direction: Direction,
         sprite_cycle_speed: int = 4
     ) -> None:
-        super().__init__()
+        super().__init__(owner=owner, action=action, direction=direction, sprite_cycle_speed=sprite_cycle_speed)
 
         global TORCH_FLY_R1, TORCH_FLY_R2, TORCH_FLY_R3, TORCH_FLY_R4
         global TORCH_FLY_L1, TORCH_FLY_L2, TORCH_FLY_L3, TORCH_FLY_L4
 
-        self.x = float(x)
-        self.y = float(y)
-        self.vx = speed if direction == Direction.RIGHT else -speed
-        self.vy = -5
-        self.gravity = float(gravity)
-
-        self.damage = damage
-
+        # stato e sprite
         self.state = State(action=Action.ATTACKING, direction=direction)
         self.sprites = SpriteCollection()
         self.sprite_cycle_counter = 0
         self.sprite_cycle_speed = int(sprite_cycle_speed)
 
-        self.sprites[(Action.ATTACKING, Direction.RIGHT)] = [TORCH_FLY_R1, TORCH_FLY_R2, TORCH_FLY_R3, TORCH_FLY_R4] + [TORCH_FLY_R3, TORCH_FLY_R2]
-        self.sprites[(Action.ATTACKING, Direction.LEFT)]  = [TORCH_FLY_L1, TORCH_FLY_L2, TORCH_FLY_L3, TORCH_FLY_L4] + [TORCH_FLY_L3, TORCH_FLY_L2]
+        self.sprites[Action.ATTACKING, Direction.RIGHT] = [TORCH_FLY_R1, TORCH_FLY_R2, TORCH_FLY_R3, TORCH_FLY_R4] + [
+            TORCH_FLY_R3, TORCH_FLY_R2]
+        self.sprites[Action.ATTACKING, Direction.LEFT] = [TORCH_FLY_L1, TORCH_FLY_L2, TORCH_FLY_L3, TORCH_FLY_L4] + [
+            TORCH_FLY_L3, TORCH_FLY_L2]
 
-        first = self.sprites[(self.state.action, self.state.direction)][0]
+        first = self.sprites[self.state.action, self.state.direction][0]
         self.width = first.width
         self.height = first.height
 
-        self._alive = True
+        # posizione e parametri di moto
+        self.x = float(x)
+        self.y = float(y)
+        self.x_step = speed if direction == Direction.RIGHT else -speed
+        self.y_step = -5
+        self.gravity = float(gravity)
 
+        # danno
+        self.damage = damage
+
+
+    # ======== INTERFACE IMPLEMENTATION ========
+    def pos(self) -> tuple[float, float]:
+        return self.x, self.y
+
+    def size(self) -> tuple[int, int]:
+        return self.width, self.height
+
+    def move(self, arena: "Game") -> None:
+        if self.state.action is Action.DEAD:
+            return
+
+        # --- VERTICAL ---
+        self.y_step += self.gravity
+        self.y += self.y_step
+
+        # --- HORIZONTAL ---
+        self.x += self.x_step
+
+    def sprite(self) -> Sprite | None:
+        if self.state.action == Action.DEAD:
+            return None
+
+        sprites = self.sprites[(self.state.action, self.state.direction)]
+        return self._looping_sprite_selection(sprites)
+
+
+    # ======== HELPER METHODS ========
+    def on_platform_collision(self, direction: Direction | None, dx: float, dy: float, game: "Game") -> None: # -> chiamato da "Game"
+        if direction is Direction.UP:
+            self.x += dx
+            self.y += dy
+            self._spawn_flame(game)
+            self.state.action = Action.DEAD
+            return
+        else:
+            self.state.action = Action.DEAD
+            return
+
+    def _spawn_flame(self, game: "Game") -> None:
+        flame_x = self.x + self.width / 2
+        flame_y = self.y + self.height
+        game.spawn(Flame(x=flame_x, ground_y=flame_y))
+
+    def hit(self, damage: int | float) -> None:
+        self.state.action = Action.DEAD
+
+
+    # ======== PROPERTIES ========
     @property
     def x(self) -> float:
         return self.__x
@@ -78,21 +132,21 @@ class Torch(Weapon):
         self.__y = float(value)
 
     @property
-    def vx(self) -> float:
+    def x_step(self) -> float:
         return self.__vx
-    @vx.setter
-    def vx(self, value: float):
+    @x_step.setter
+    def x_step(self, value: float):
         if not isinstance(value, (int, float)):
-            raise TypeError("vx must be an int or float")
+            raise TypeError("x_step must be an int or float")
         self.__vx = float(value)
 
     @property
-    def vy(self) -> float:
+    def y_step(self) -> float:
         return self.__vy
-    @vy.setter
-    def vy(self, value: float):
+    @y_step.setter
+    def y_step(self, value: float):
         if not isinstance(value, (int, float)):
-            raise TypeError("vy must be an int or float")
+            raise TypeError("y_step must be an int or float")
         self.__vy = float(value)
 
     @property
@@ -123,24 +177,6 @@ class Torch(Weapon):
         self.__sprites = value
 
     @property
-    def sprite_cycle_counter(self) -> int:
-        return self.__sprite_cycle_counter
-    @sprite_cycle_counter.setter
-    def sprite_cycle_counter(self, value: int):
-        if not isinstance(value, int):
-            raise TypeError("sprite_cycle_counter must be an int")
-        self.__sprite_cycle_counter = int(value)
-
-    @property
-    def sprite_cycle_speed(self) -> int:
-        return self.__sprite_cycle_speed
-    @sprite_cycle_speed.setter
-    def sprite_cycle_speed(self, value: int):
-        if not isinstance(value, int):
-            raise TypeError("sprite_cycle_speed must be an int")
-        self.__sprite_cycle_speed = int(value)
-
-    @property
     def width(self) -> int:
         return self.__width
     @width.setter
@@ -159,15 +195,6 @@ class Torch(Weapon):
         self.__height = int(value)
 
     @property
-    def _alive(self) -> bool:
-        return self.__alive
-    @_alive.setter
-    def _alive(self, value: bool):
-        if not isinstance(value, bool):
-            raise TypeError("_alive must be a bool")
-        self.__alive = bool(value)
-
-    @property
     def damage(self) -> int:
         return self.__damage
     @damage.setter
@@ -175,68 +202,3 @@ class Torch(Weapon):
         if not isinstance(value, int):
             raise TypeError("damage must be an int")
         self.__damage = int(value)
-
-    def pos(self) -> tuple[float, float]:
-        return self.x, self.y
-
-    def size(self) -> tuple[int, int]:
-        return self.width, self.height
-
-    def move(self, arena: Arena) -> None:
-        if not self._alive:
-            return
-
-        self.vy += self.gravity
-        self.x += self.vx
-        self.y += self.vy
-
-        a_w, a_h = arena.size()
-        if self.x + self.width < 0 or self.x > a_w or self.y > a_h or self.y + self.height < 0:
-            self._despawn(arena)
-            return
-
-        """for actor in arena.actors():
-            if isinstance(actor, Zombie) and self._overlap(actor):
-                try:
-                    arena.kill(actor)
-                except Exception:
-                    pass
-                self._despawn(arena)
-                return"""
-
-
-        for actor in arena.actors():
-            if isinstance(actor, Platform):
-                direction, dx, dy = actor.clamp(self)
-                if direction is None:
-                    continue
-                if direction == Direction.UP:
-                    self.x += dx
-                    self.y += dy
-                    self._spawn_flame(arena)
-                    self._despawn(arena)
-                    return
-                else:
-                    self._despawn(arena)
-                    return
-
-    def sprite(self) -> Sprite | None:  # type: ignore
-        sprites = self.sprites[(self.state.action, self.state.direction)]
-        return self._looping_sprite_selection(sprites)
-
-    def _overlap(self, other: Actor) -> bool:
-        x, y = self.pos(); w, h = self.size()
-        ox, oy = other.pos(); ow, oh = other.size()
-        return not (x + w <= ox or ox + ow <= x or y + h <= oy or oy + oh <= y)
-
-    def _spawn_flame(self, arena: Arena) -> None:
-        flame_x = self.x + self.width / 2 - 10
-        flame_y = self.y + self.height - 8
-        arena.spawn(Flame(x=flame_x, y=flame_y))
-
-    def _despawn(self, arena: Arena) -> None:
-        self._alive = False
-        try:
-            arena.kill(self)
-        except Exception:
-            pass

@@ -1,7 +1,5 @@
 from actor import Actor, Arena
 from status import Action, Direction, Sprite, SpriteCollection, State
-from Zombie import Zombie
-from Platform import Platform
 import pathlib
 
 
@@ -21,42 +19,106 @@ FLAME_SMALL_L4 = Sprite(SPR_PATH, 272, 442, 12, 18)
 
 class Flame(Actor):
     def __init__(self,
-         x: float,
-         y: float,
-         *,
-         damage: int = 1,
-         life_frames: int = 60,
-         sprite_cycle_speed: int = 6
-    ) -> None:
-        self.x = float(x)
-        self._ground_y = float(y)
-        self._age = 0
-        self.life_frames = int(life_frames)
+                 x: float,
+                 ground_y: float,
+                 *,
+                 damage: int = 1,
+                 life_time: int = 60,
+                 sprite_cycle_speed: int = 6
+                 ) -> None:
+        self.ground_y = ground_y
+        self.age = 0
+        self.life_time = life_time
 
         self.damage = damage
 
-        self.state = State(action=Action.IDLE, direction=Direction.RIGHT)
-        self.sprites = SpriteCollection()
+        self.state = State(action=Action.BIG, direction=Direction.RIGHT)
+        self.sprite_cycle_speed = sprite_cycle_speed
         self.sprite_cycle_counter = 0
-        self.sprite_cycle_speed = int(sprite_cycle_speed)
 
-        self._big_R = [FLAME_BIG_R1, FLAME_BIG_R2, FLAME_BIG_R1, FLAME_BIG_R2]
-        self._big_L = [FLAME_BIG_L1, FLAME_BIG_L2, FLAME_BIG_L1, FLAME_BIG_L2]
-        self._small_R = [FLAME_SMALL_R3, FLAME_SMALL_R4, FLAME_SMALL_R3, FLAME_SMALL_R4]
-        self._small_L = [FLAME_SMALL_L3, FLAME_SMALL_L4, FLAME_SMALL_L3, FLAME_SMALL_L4]
+        self.sprites = SpriteCollection()
+        self._init_sprites()
 
-        self.sprites[(Action.IDLE, Direction.RIGHT)] = self._big_R
-        self.sprites[(Action.IDLE, Direction.LEFT)]  = self._big_L
-
-        first = self.sprites[(self.state.action, self.state.direction)][0]
+        first = self.sprites[self.state.action, self.state.direction][0]
         self.width = first.width
         self.height = first.height
 
-        self.y = self._ground_y - self.height
+        self.x = x - self.width//2
+        self.y = self.ground_y - self.height
 
-        self._switched_to_small = False
-        self._ground_snapped = False
 
+    # ======== INTERFACE IMPLEMENTATION ========
+    def pos(self) -> tuple[float, float]:
+        return self.x, self.y
+
+    def size(self) -> tuple[int, int]:
+        return self.width, self.height
+
+    def move(self, arena: Arena) -> None:
+        if self.state.action == Action.DEAD:
+            return
+
+        self.age += 1
+        if self.age >= self.life_time:
+            self.state.action = Action.DEAD
+            return
+
+        if self.state.action != Action.SMALL and self.age >= self.life_time // 2:
+            self._set_state_action(Action.SMALL)
+
+
+    def sprite(self) -> Sprite | None:  # type: ignore
+        if self.state.action == Action.DEAD:
+            return None
+        sprites = self.sprites[self.state.action, self.state.direction]
+        return self._looping_sprite_selection(sprites)
+
+
+    # ======== METHODS ========
+    def on_platform_collision(self, direction: Direction | None, dx: float, dy: float) -> None:
+        if direction is None:
+            return
+
+        if dx: self.x += dx
+        if dy: self.y += dy
+
+
+    # ======== HELPER METHODS ========
+    def _init_sprites(self) -> None:
+        global FLAME_BIG_R1, FLAME_BIG_R2, FLAME_BIG_L1, FLAME_BIG_L2
+        global FLAME_SMALL_R3, FLAME_SMALL_R4, FLAME_SMALL_L3, FLAME_SMALL_L4
+
+        self.sprites[Action.BIG, Direction.RIGHT] = [FLAME_BIG_R1, FLAME_BIG_R2] * 2
+        self.sprites[Action.BIG, Direction.LEFT] = [FLAME_BIG_L1, FLAME_BIG_L2] * 2
+        self.sprites[Action.SMALL, Direction.RIGHT] = [FLAME_SMALL_R3, FLAME_SMALL_R4] * 2
+        self.sprites[Action.SMALL, Direction.LEFT] = [FLAME_SMALL_L3, FLAME_SMALL_L4] * 2
+
+    def _set_state_action(self, action: Action, *, reset: bool = True) -> None:
+        if self.state.action != action and reset:
+            self.reset_sprite_cycle_counter()
+
+        self.state.action = action
+
+        if (self.state.action, self.state.direction) in self.sprites.__iter__():
+            first = self.sprites[self.state.action, self.state.direction][0]
+            prev_width = self.width
+            self.width = first.width
+            self.x = self.x + prev_width//2 - self.width//2
+
+            self.height = first.height
+            self.y = (self.ground_y - self.height) + 1
+
+    def _looping_sprite_selection(self, sprites: list[Sprite]) -> Sprite:
+        self.sprite_cycle_counter += 1
+        return sprites[(self.sprite_cycle_counter // self.sprite_cycle_speed) % len(sprites)]
+
+    def reset_sprite_cycle_counter(self) -> int:
+        last = self.sprite_cycle_counter
+        self.sprite_cycle_counter = 0
+        return last
+
+
+    # ======== PROPERTIES ========
     @property
     def x(self) -> float:
         return self.__x
@@ -94,12 +156,12 @@ class Flame(Actor):
         self.__height = int(value)
 
     @property
-    def life_frames(self) -> int:
+    def life_time(self) -> int:
         return self.__life_frames
-    @life_frames.setter
-    def life_frames(self, value: int) -> None:
+    @life_time.setter
+    def life_time(self, value: int) -> None:
         if not isinstance(value, (int, float)):
-            raise TypeError("life_frames must be a number")
+            raise TypeError("life_time must be a number")
         self.__life_frames = int(value)
 
     @property
@@ -148,138 +210,21 @@ class Flame(Actor):
         self.__damage = int(value)
 
     @property
-    def _ground_y(self) -> float:
+    def ground_y(self) -> float:
         return self.__ground_y
-    @_ground_y.setter
-    def _ground_y(self, value: float) -> None:
+    @ground_y.setter
+    def ground_y(self, value: float) -> None:
         if not isinstance(value, (int, float)):
-            raise TypeError("_ground_y must be a number")
+            raise TypeError("ground_y must be a number")
         self.__ground_y = float(value)
 
     @property
-    def _age(self) -> int:
+    def age(self) -> int:
         return self.__age
-    @_age.setter
-    def _age(self, value: int) -> None:
+    @age.setter
+    def age(self, value: int) -> None:
         if not isinstance(value, (int, float)):
-            raise TypeError("_age must be a number")
+            raise TypeError("age must be a number")
         self.__age = int(value)
 
-    @property
-    def _big_R(self) -> list[Sprite]:
-        return self.__big_R
-    @_big_R.setter
-    def _big_R(self, value: list[Sprite]) -> None:
-        self.__big_R = list(value)
 
-    @property
-    def _big_L(self) -> list[Sprite]:
-        return self.__big_L
-    @_big_L.setter
-    def _big_L(self, value: list[Sprite]) -> None:
-        self.__big_L = list(value)
-
-    @property
-    def _small_R(self) -> list[Sprite]:
-        return self.__small_R
-    @_small_R.setter
-    def _small_R(self, value: list[Sprite]) -> None:
-        self.__small_R = list(value)
-
-    @property
-    def _small_L(self) -> list[Sprite]:
-        return self.__small_L
-    @_small_L.setter
-    def _small_L(self, value: list[Sprite]) -> None:
-        self.__small_L = list(value)
-
-    @property
-    def _switched_to_small(self) -> bool:
-        return self.__switched_to_small
-    @_switched_to_small.setter
-    def _switched_to_small(self, value: bool) -> None:
-        if not isinstance(value, bool):
-            raise TypeError("_switched_to_small must be a bool")
-        self.__switched_to_small = bool(value)
-
-    @property
-    def _ground_snapped(self) -> bool:
-        return self.__ground_snapped
-    @_ground_snapped.setter
-    def _ground_snapped(self, value: bool) -> None:
-        if not isinstance(value, bool):
-            raise TypeError("_ground_snapped must be a bool")
-        self.__ground_snapped = bool(value)
-
-    @property
-    def reset_sprite_cycle_counter(self) -> int:
-        self.sprite_cycle_counter = 0
-        return self.sprite_cycle_counter
-
-    @property
-    def increment_sprite_cycle_counter(self) -> int:
-        self.sprite_cycle_counter += 1
-        return self.sprite_cycle_counter
-
-    def pos(self) -> tuple[float, float]:
-        return self.x, self.y
-
-    def size(self) -> tuple[int, int]:
-        return self.width, self.height
-
-    def move(self, arena: Arena) -> None:
-        if not self._ground_snapped:
-            best_p: Platform | None = None
-            best_dist = float("inf")
-            left, right = self.x, self.x + self.width
-
-            for actor in arena.actors():
-                if isinstance(actor, Platform):
-                    pL, pR = actor.x, actor.x + actor.width
-
-                    h_overlap = min(right, pR) - max(left, pL)
-                    if h_overlap <= 0:
-                        continue
-
-                    bottom = self.y + self.height
-                    dist = abs(bottom - actor.y)
-                    if dist < best_dist:
-                        best_dist = dist
-                        best_p = actor
-
-            if best_p is not None:
-                self._ground_y = best_p.y
-                self.y = self._ground_y - self.height
-            self._ground_snapped = True
-
-        if (not self._switched_to_small) and self._age >= self.life_frames // 2:
-            self._switched_to_small = True
-            self.sprites[(Action.IDLE, Direction.RIGHT)] = self._small_R
-            self.sprites[(Action.IDLE, Direction.LEFT)]  = self._small_L
-
-            first = self.sprites[(self.state.action, self.state.direction)][0]
-            self.width = first.width
-            self.height = first.height
-            self.y = self._ground_y - self.height
-
-            self.sprite_cycle_counter = 0
-
-        self._age += 1
-        if self._age >= self.life_frames:
-            try:
-                arena.kill(self)
-            except Exception:
-                pass
-
-    def sprite(self) -> Sprite | None:  # type: ignore
-        sprites = self.sprites[(self.state.action, self.state.direction)]
-        return self._looping_sprite_selection(sprites)
-
-    def _looping_sprite_selection(self, sprites: list[Sprite]) -> Sprite:
-        self.sprite_cycle_counter += 1
-        return sprites[(self.sprite_cycle_counter // self.sprite_cycle_speed) % len(sprites)]
-
-    def _overlap(self, other: Actor) -> bool:
-        x, y = self.pos(); w, h = self.size()
-        ox, oy = other.pos(); ow, oh = other.size()
-        return not (x + w <= ox or ox + ow <= x or y + h <= oy or oy + oh <= y)

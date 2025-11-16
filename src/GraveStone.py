@@ -11,6 +11,6 @@ class GraveStone(Platform):
          contact_surfaces: list[Direction] | tuple[Direction] | None = (Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT),
          damage: int | float = 0.0,
          *,
-         name: str = "Platform"
+         name: str = "GraveStone"
     ) -> None:
         super().__init__(x=x, y=y, width=width, height=height, contact_surfaces=contact_surfaces, damage=damage, name=name)

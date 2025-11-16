@@ -4,13 +4,15 @@ from g2d_lib import g2d
 from actor import Actor
 
 from Arthur import Arthur
+from Zombie import Zombie
 from Platform import Platform
 from Ladder import Ladder
 
 from Camera import Camera
 from guis import GUIComponent
+from GraveStone import GraveStone
 
-from status import Sprite, Phase
+from status import Sprite, Phase, Direction
 
 from Game import Game
 from GraphicalInterface import GraphicalInterface
@@ -63,7 +65,7 @@ class App(object):
         spawn_queue.append(Arthur(name="Player", x=50, y=50))
         # Wall left
         spawn_queue.extend([
-            Platform(x=-10, y=0, width=10, height=round(self.size[1]), damage=0)
+            Platform(x=-10, y=0, width=10, height=round(self.size[1]), damage=0, contact_surfaces=[Direction.LEFT, Direction.RIGHT, Direction.DOWN], name="Wall Left 1"),
         ])
         # Ground
         spawn_queue.extend([
@@ -85,10 +87,26 @@ class App(object):
         # Ladders
         spawn_queue.extend([
             Ladder(x=721 - 2, y=122 - 10, width=18, height=80, damage=0, contact_surfaces=None, name="Ladder 1"),
+            Ladder(x=913 - 2, y=122 - 10, width=18, height=80, damage=0, contact_surfaces=None, name="Ladder 2"),
+            Ladder(x=1073 - 2, y=122 - 10, width=18, height=80, damage=0, contact_surfaces=None, name="Ladder 3"),
         ])
         # Floating Platforms
         spawn_queue.extend([
-            Platform(x=610 - 2, y=122 - 10, width=111, height=18, damage=0, name="FloatingPlatform 1"),
+            Platform(x=610 - 2, y=122 - 10, width=111 - 3, height=12, damage=0, name="FloatingPlatform 1"),
+            Platform(x=739 - 2 + 3, y=122 - 10, width=174 - 3 - 3, height=12, damage=0, name="FloatingPlatform 2"),
+            Platform(x=931 - 2 + 3, y=122 - 10, width=142 - 3 - 3, height=12, damage=0, name="FloatingPlatform 3"),
+            Platform(x=1091 - 2 + 3, y=122 - 10, width=30 - 3, height=12, damage=0, name="FloatingPlatform 4"),
+        ])
+        # Gravestones
+        spawn_queue.extend([
+            GraveStone(x=50-2, y=186-10, width=16, height=16, damage=0, name="GraveStone 1"),
+            GraveStone(x=242-2, y=186-10, width=16, height=16, damage=0, name="GraveStone 2"),
+            GraveStone(x=530-2, y=186-10, width=16, height=16, damage=0, name="GraveStone 3"),
+            GraveStone(x=754-2, y=186-10, width=16, height=16, damage=0, name="GraveStone 4"),
+            GraveStone(x=962-2, y=186-10, width=16, height=16, damage=0, name="GraveStone 5"),
+            GraveStone(x=1106-2, y=186-10, width=16, height=16, damage=0, name="GraveStone 6"),
+            GraveStone(x=1522-2, y=186-10, width=16, height=16, damage=0, name="GraveStone 7"),
+            GraveStone(x=866-2, y=106-10, width=16, height=16, damage=0, name="GraveStone 8"),
         ])
 
         self.game: Game = Game(world_background.size, background=world_background, spawn_queue=spawn_queue)
@@ -108,6 +126,9 @@ class App(object):
         if not (hasattr(self, "game") and hasattr(self, "gui")):
             self.app_phase = Phase.MENU
             return
+
+        if self.game.game_over:
+            self.app_phase = Phase.END_GAME
 
         self.game.tick(keys=g2d.current_keys())
         self.gui.render(self.game)
@@ -131,8 +152,10 @@ def main() -> None:
     global CAMERA_WIDTH, CAMERA_HEIGHT
     app = App()
     
-    g2d.init_canvas(size=(CAMERA_WIDTH, CAMERA_HEIGHT), scale=2)
+    g2d.init_canvas(size=(CAMERA_WIDTH, CAMERA_HEIGHT), scale=3)
     g2d.main_loop(tick=app.tick, fps=30)
+
+
 
 
 if __name__ == "__main__":

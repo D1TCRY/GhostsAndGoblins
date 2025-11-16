@@ -1,5 +1,12 @@
 from actor import Actor, Arena
+from typing import TYPE_CHECKING
+
+from src.Ladder import Ladder
+
+if TYPE_CHECKING: from Game import Game
+
 from Platform import Platform
+from GraveStone import GraveStone
 
 from guis import GUIComponent, Bar
 from status import Action, Direction, Sprite, SpriteCollection, State
@@ -10,6 +17,35 @@ if TYPE_CHECKING:
 
 import random
 import pathlib
+
+from dataclasses import dataclass
+
+
+# HELPER CLASSES
+@dataclass
+class Range:
+    min: float
+    max: float
+
+    def __str__(self) -> str:
+        return f"<{self.min} -> {self.max}>"
+
+    def __repr__(self) -> str:
+        return f"Range({self.min}, {self.max})"
+
+@dataclass
+class Candidate:
+    distance: float
+    height: float
+    range: Range
+    direction: Direction
+
+    def __str__(self) -> str:
+        return f"< Candidate | {self.distance}, {self.height}, {self.range}, {self.direction} >"
+
+    def __repr__(self) -> str:
+        return f"Candidate({repr(self.distance)}, {repr(self.height)}, {repr(self.range)}, {repr(self.direction)})"
+
 
 
 # EMERGING
@@ -46,18 +82,19 @@ class Zombie(Actor):
         width: int = 21,
         height: int = 32,
         speed: float = 1.0,
+        gravity: float = 0.7,
         min_walk_distance: float = 150.0,
         max_walk_distance: float = 300.0,
         sprite_cycle_speed: int = 6,
         direction: Direction = Direction.LEFT,
+        damage: float = 30.0,
+        attack_interval: int = 50
     ) -> None:
-        global ZOMBIE_EMERGING_L1, ZOMBIE_EMERGING_L2, ZOMBIE_EMERGING_L3, ZOMBIE_EMERGING_L4
-        global ZOMBIE_EMERGING_R1, ZOMBIE_EMERGING_R2, ZOMBIE_EMERGING_R3, ZOMBIE_EMERGING_R4
-        global ZOMBIE_WALK_L1, ZOMBIE_WALK_L2, ZOMBIE_WALK_L3
-        global ZOMBIE_WALK_R1, ZOMBIE_WALK_R2, ZOMBIE_WALK_R3
-
         self.name = name
         self.health = health
+        self.damage = damage
+        self.attack_interval = attack_interval
+        self.attack_cooldown = 0
 
         self.x = x
         self.y = y
@@ -67,8 +104,11 @@ class Zombie(Actor):
         self.speed = speed
         self.x_step = 0.0
 
-        self.min_walk_distance = float(min_walk_distance)
-        self.max_walk_distance = float(max_walk_distance)
+        self.gravity = gravity
+        self.y_step = 0
+
+        self.min_walk_distance = min_walk_distance
+        self.max_walk_distance = max_walk_distance
         self.distance_to_walk = random.uniform(self.min_walk_distance, self.max_walk_distance)
         self.walked_distance = 0.0
 
@@ -77,29 +117,41 @@ class Zombie(Actor):
         self.sprite_cycle_counter = 0
         self.sprite_cycle_speed = int(sprite_cycle_speed)
 
+        self.grounded = False
+
 
         # default properties
         self.sprites = SpriteCollection()
+        self.__init_sprites()
 
-        self.sprites[(Action.EMERGING, Direction.LEFT)] = [
+        first = self.sprites[self.state.action, self.state.direction][0]
+        self.width = first.width
+        self.height = first.height
+
+    def __init_sprites(self) -> None:
+        global ZOMBIE_EMERGING_L1, ZOMBIE_EMERGING_L2, ZOMBIE_EMERGING_L3, ZOMBIE_EMERGING_L4
+        global ZOMBIE_EMERGING_R1, ZOMBIE_EMERGING_R2, ZOMBIE_EMERGING_R3, ZOMBIE_EMERGING_R4
+        global ZOMBIE_WALK_L1, ZOMBIE_WALK_L2, ZOMBIE_WALK_L3
+        global ZOMBIE_WALK_R1, ZOMBIE_WALK_R2, ZOMBIE_WALK_R3
+
+        self.sprites[Action.EMERGING, Direction.LEFT] = [
             ZOMBIE_EMERGING_L1, ZOMBIE_EMERGING_L2, ZOMBIE_EMERGING_L3, ZOMBIE_EMERGING_L4
         ]
-        self.sprites[(Action.EMERGING, Direction.RIGHT)] = [
+        self.sprites[Action.EMERGING, Direction.RIGHT] = [
             ZOMBIE_EMERGING_R1, ZOMBIE_EMERGING_R2, ZOMBIE_EMERGING_R3, ZOMBIE_EMERGING_R4
         ]
 
-        self.sprites[(Action.IMMERSING, Direction.LEFT)] = list(reversed(self.sprites[(Action.EMERGING, Direction.LEFT)]))
-        self.sprites[(Action.IMMERSING, Direction.RIGHT)] = list(reversed(self.sprites[(Action.EMERGING, Direction.RIGHT)]))
+        self.sprites[Action.IMMERSING, Direction.LEFT] = list(
+            reversed(self.sprites[(Action.EMERGING, Direction.LEFT)]))
+        self.sprites[(Action.IMMERSING, Direction.RIGHT)] = list(
+            reversed(self.sprites[(Action.EMERGING, Direction.RIGHT)]))
 
-        self.sprites[(Action.WALKING, Direction.LEFT)] = [ZOMBIE_WALK_L1, ZOMBIE_WALK_L2, ZOMBIE_WALK_L3]
-        self.sprites[(Action.WALKING, Direction.RIGHT)] = [ZOMBIE_WALK_R1, ZOMBIE_WALK_R2, ZOMBIE_WALK_R3]
+        self.sprites[Action.WALKING, Direction.LEFT] = [ZOMBIE_WALK_L1, ZOMBIE_WALK_L2, ZOMBIE_WALK_L3]
+        self.sprites[Action.WALKING, Direction.RIGHT] = [ZOMBIE_WALK_R1, ZOMBIE_WALK_R2, ZOMBIE_WALK_R3]
 
-        self.sprites[(Action.DEAD, Direction.LEFT)] = []
-        self.sprites[(Action.DEAD, Direction.RIGHT)] = []
+        self.sprites[Action.DEAD, Direction.LEFT] = []
+        self.sprites[Action.DEAD, Direction.RIGHT] = []
 
-        first = self.sprites[(self.state.action, self.state.direction)][0]
-        self.width = first.width
-        self.height = first.height
 
     # ======== PROPERTIES ========
     @property
@@ -139,6 +191,33 @@ class Zombie(Actor):
             self._set_state_action(Action.DEAD)
             self.walked_distance = 0.0
             self.distance_to_walk = random.uniform(self.min_walk_distance, self.max_walk_distance)
+
+    @property
+    def damage(self) -> float:
+        return self.__damage
+    @damage.setter
+    def damage(self, value: int | float):
+        if not isinstance(value, (int, float)):
+            raise TypeError("damage must be an int or float")
+        self.__damage = float(value)
+
+    @property
+    def attack_interval(self) -> int:
+        return self.__attack_interval
+    @attack_interval.setter
+    def attack_interval(self, value: int | float):
+        if not isinstance(value, (int,)):
+            raise TypeError("attack_interval must be an int")
+        self.__attack_interval: int = value
+
+    @property
+    def attack_cooldown(self) -> int:
+        return self.__attack_cooldown
+    @attack_cooldown.setter
+    def attack_cooldown(self, value: int) -> None:
+        if not isinstance(value, (int,)):
+            raise TypeError("attack_cooldown must be an int")
+        self.__attack_cooldown: int = value if value >= 0 else 0
 
     @property
     def width(self) -> int:
@@ -239,57 +318,76 @@ class Zombie(Actor):
     def size(self) -> tuple[int, int]:
         return self.width, self.height
 
-    def move(self, arena: "Arena") -> None:
+    def move(self, arena: "Game") -> None:
         if self.state.action == Action.DEAD:
             return
 
-        borders = self._clamp_in_arena(arena)
-        if borders["at_left"] and self.state.direction == Direction.LEFT:
-            self.state.direction = Direction.RIGHT
-        elif borders["at_right"] and self.state.direction == Direction.RIGHT:
-            self.state.direction = Direction.LEFT
+        self.attack_cooldown -= 1
 
+        # --- VERTICAL ---
+        if self.state.action != Action.EMERGING:  # -> la gravità agisce solo quando non sta emergendo dal terreno
+            self.y_step += self.gravity  # -> aggiornamento velocita verticale applicando la gravita
+            self.y += self.y_step  # -> aggiornamento posizione verticale in base alla velocita
+
+        # --- HORIZONTAL ---
         if self.state.action == Action.EMERGING:
-            if self._locked_anim_finished():
-                self._set_state_action(Action.WALKING)
-
+            if self._locked_anim_finished():  # -> attende che l'animazione di emersione sia terminata
+                self._set_state_action(Action.WALKING)  # -> quando finita passa allo stato di camminata
         elif self.state.action == Action.WALKING:
             self.x_step = self.speed if self.state.direction == Direction.RIGHT else -self.speed
-            self.x += self.x_step
+            self.x += self.x_step  # -> aggiornamento posizione orizzontale
 
-            self.walked_distance += abs(self.x_step)
-            if self.walked_distance >= self.distance_to_walk:
+            self.walked_distance += abs(self.x_step)  # -> accumulo della distanza totale percorsa camminando
+            if self.walked_distance >= self.distance_to_walk and self.grounded:  # -> se ha camminato abbastanza ed è a terra, inizia l'immersione
                 self._set_state_action(Action.IMMERSING)
-
         elif self.state.action == Action.IMMERSING:
-            if self._locked_anim_finished():
+            if self._locked_anim_finished():  # -> quando l'animazione di immersione è conclusa viene segnato come morto
                 self._set_state_action(Action.DEAD)
 
-        self._clamp_in_arena(arena)
 
     def sprite(self) -> "Sprite | None":  # type: ignore
-        sprites = self.sprites[(self.state.action, self.state.direction)]
+        sprites = self.sprites[self.state.action, self.state.direction]
         match self.state.action:
-            case Action.WALKING:
-                return self._looping_sprite_selection(sprites)
-            case Action.EMERGING | Action.IMMERSING:
-                return self._locked_looping_sprite_selection(sprites)
-            case Action.DEAD:
-                return None
-            case _:
-                return None
+            case Action.WALKING: return self._looping_sprite_selection(sprites)
+            case Action.EMERGING | Action.IMMERSING: return self._locked_looping_sprite_selection(sprites)
+            case Action.DEAD: return None
+            case _: return None
 
+    # ======= METHODS ========
     def hit(self, damage: float) -> None:
         self.health -= damage
 
     # ======== HELPERS ========
+    def on_arthur_collision(self, arthur: "Arthur") -> None:
+        if self.state.action in (Action.EMERGING, Action.IMMERSING, Action.DEAD):
+            return
+
+        if self.attack_cooldown <= 0:
+            arthur.hit(self.damage)
+            self.attack_cooldown = self.attack_interval
+
+    def on_platform_collision(self, direction: Direction | None, dx: float, dy: float) -> None: # called by "Game"
+        if direction is None:
+            return
+
+        if dx: self.x += dx
+        if dy: self.y += dy
+
+        if direction in (Direction.LEFT, Direction.RIGHT):
+            self.state.direction = direction
+        else:
+            self.y_step = 0.0
+            if direction == Direction.UP:
+                self.grounded = True
+
+
     def _set_state_action(self, action: Action) -> None:
         if self.state.action != action:
             _ = self.reset_sprite_cycle_counter
             # update width, height, y based on the first sprite
             if action not in (Action.DEAD,):
                 first = self.sprites[(action, self.state.direction)][0]
-                self.y = self.y + self.height - first.height  # keep on ground
+                self.y = self.y + self.height - first.height  # mantenere sul terreno
                 self.width = first.width
                 self.height = first.height
             self.state.action = action
@@ -308,59 +406,64 @@ class Zombie(Actor):
         i = self.sprite_cycle_counter // self.sprite_cycle_speed
         return i >= len(sprites) - 1
 
-    def _clamp_in_arena(self, arena: "Arena") -> dict[str, bool]:
-        A_WIDTH, A_HEIGHT = arena.size()
-
-        on_ground = False
-        at_left = False
-        at_right = False
-
-        # suolo
-        if self.y + self.height >= A_HEIGHT:
-            self.y = A_HEIGHT - self.height
-            on_ground = True
-
-        # pareti
-        if self.x <= 0:
-            self.x = 0
-            at_left = True
-        if self.x + self.width >= A_WIDTH:
-            self.x = A_WIDTH - self.width
-            at_right = True
-
-        return {"on_ground": on_ground, "at_left": at_left, "at_right": at_right}
-
-    def inside_arena(self, arena: "Arena") -> bool:
-        a_width, a_height = arena.size()
-        return 0 <= self.x <= a_width - self.width and 0 <= self.y <= a_height - self.height
 
     # ======== AUTO CONSTRUCTOR ========
     @classmethod
-    def auto_init(cls, player: "Arthur", arena: "Arena") -> "Zombie":
+    def auto_init(cls, player: "Arthur", game: "Game") -> "Zombie":
+        # -> regione di spawn da arthur
+        min_dist_x = 50  # -> distanza minima da Arthur
+        max_dist_x = 250  # -> ampiezza del range oltre la distanza minima
+        zombie_width = ZOMBIE_WALK_L1.width # -> larghezza zombie
+        zombie_height = ZOMBIE_EMERGING_L1.height # -> altezza zombie
+
         player_cx, player_cy = player.x+player.width//2, player.y+player.height//2
 
-        # search nearest platform
-        platforms: list[Platform] = [_ for _ in arena.actors() if isinstance(_, Platform) and round(_.damage) == round(0)]
-        distances: dict[tuple[float, float], Platform] = {}
+        platforms: list[Platform] = [
+            _ for _ in game.actors()
+            if isinstance(_, Platform)
+            and not isinstance(_, (GraveStone, Ladder))
+            and round(_.damage) == round(0)
+            and Direction.UP in (
+                _.contact_surfaces
+                if _.contact_surfaces is not None
+                else [])
+        ] # -> selezione delle Platform su cui è possibile spawnare
+
+        candidates: list[Candidate] = [] # -> lista contenente i candidati (ossia degli oggetti che rapparesentano le coordinate valide per lo spawn e altre proprieta come la distanza da arthur)
         for platform in platforms:
-            d_y = ( abs(player_cy - platform.y) )
-            d_x = ( 0 if platform.x < player_cx < platform.x+platform.width else max(player.x - platform.x + platform.width, platform.x - player.x+player.width) )
-            distances[(d_x, d_y)] = platform
+            # left -> gestione del range sinistro
+            if (max(platform.x, player_cx - min_dist_x - max_dist_x) <= platform.x + platform.width and
+                    min(platform.x + platform.width, player_cx - min_dist_x) >= platform.x): # -> se la piattaforma interseca la regione x di spawn sinistra...
+                min_x = max(platform.x, player_cx - min_dist_x - max_dist_x) # -> estremo sinistro del range valido per lo spawn
+                max_x = min(platform.x + platform.width, player_cx - min_dist_x) # -> estremo destro del range valido per lo spawn
 
-        zombie_x = player.x + random.choice([-1, 1]) * random.uniform(25, 200)
+                distance = abs(platform.y - (player.y + player.height)) + (player_cx - max_x)
 
-        if distances:
-            keys = list(distances.keys())
-            keys.sort(key=lambda x: (x[0]**2+x[1]**2)**0.5)
+                if max_x - min_x > zombie_width:
+                    candidates.append(Candidate(distance=distance, height=platform.y, range=Range(min_x, max_x), direction=Direction.RIGHT))
 
-            nearest_platform: Platform = distances[keys[random.randint(0, min(2, len(keys) - 1))]]
-            zombie_y = nearest_platform.pos()[1] - 32
-            zombie_x = max(nearest_platform.pos()[0], min(zombie_x, nearest_platform.pos()[0] + nearest_platform.width - 18))
-        else:
-            zombie_y = 202-10
+            # right -> gestione del range destro
+            if (max(platform.x, player_cx + min_dist_x) <= platform.x + platform.width and
+                    min(platform.x + platform.width, player_cx + min_dist_x + max_dist_x) >= platform.x): # -> se la piattaforma interseca la regione x di spawn destra...
+                min_x = max(platform.x, player_cx + min_dist_x) # -> estremo sinistro del range valido per lo spawn
+                max_x = min(platform.x + platform.width, player_cx + min_dist_x + max_dist_x) # -> estremo destro del range valido per lo spawn
+
+                distance = abs(platform.y - (player.y + player.height)) + (min_x - player_cx)
+
+                if max_x - min_x > zombie_width:
+                    candidates.append(Candidate(distance=distance, height=platform.y, range=Range(min_x, max_x), direction=Direction.LEFT))
 
 
-        zombie_direction = Direction.LEFT if zombie_x > player.x else Direction.RIGHT
+        candidates.sort(key=lambda candidate: candidate.distance)
+        candidates = candidates[:3]
 
-        return cls(name="Zombie", x=zombie_x, y=zombie_y, direction=zombie_direction)
+        chosen_platform = random.choice(candidates)
+        x, y, d = random.uniform(chosen_platform.range.min, chosen_platform.range.max - zombie_width), chosen_platform.height - zombie_height, chosen_platform.direction
+
+        return cls(
+            name="Zombie",
+            x = x,
+            y = y,
+            direction = d,
+        )
 

@@ -2,10 +2,7 @@ from actor import Actor, Arena, check_collision, check_overlap
 from typing import TYPE_CHECKING
 if TYPE_CHECKING: from Game import Game
 
-from Platform import Platform
-from Ladder import Ladder
 from Torch import Torch
-from GraveStone import GraveStone
 from guis import GUIComponent, Bar
 
 from status import Sprite, State, Action, Direction, SpriteCollection
@@ -13,31 +10,29 @@ from status import Sprite, State, Action, Direction, SpriteCollection
 import pathlib
 
 
-ARTHUR_SPRITE_PATH = "https://fondinfo.github.io/sprites/ghosts-goblins.png"
-ARTHUR_SPRITE_WIDTH = 21
-ARTHUR_SPRITE_HEIGHT = 32
+ARTHUR_SPRITE_PATH = pathlib.Path(__file__).parent / "data" / "textures" / "ghosts-goblins.png"
 
 # IDLE
-ARTHUR_SPRITE_IDLE_R: Sprite = Sprite(path=ARTHUR_SPRITE_PATH, x=7, y=42, width=19, height=ARTHUR_SPRITE_HEIGHT)
-ARTHUR_SPRITE_IDLE_L: Sprite = Sprite(path=ARTHUR_SPRITE_PATH, x=486, y=42, width=19, height=ARTHUR_SPRITE_HEIGHT)
+ARTHUR_SPRITE_IDLE_R: Sprite = Sprite(path=ARTHUR_SPRITE_PATH, x=7, y=42, width=19, height=32)
+ARTHUR_SPRITE_IDLE_L: Sprite = Sprite(path=ARTHUR_SPRITE_PATH, x=486, y=42, width=19, height=32)
 
 # WALKING
-ARTHUR_SPRITE_WALKING_R1: Sprite = Sprite(path=ARTHUR_SPRITE_PATH, x=41, y=42, width=22, height=ARTHUR_SPRITE_HEIGHT)
-ARTHUR_SPRITE_WALKING_R2: Sprite = Sprite(path=ARTHUR_SPRITE_PATH, x=67, y=42, width=18, height=ARTHUR_SPRITE_HEIGHT)
-ARTHUR_SPRITE_WALKING_R3: Sprite = Sprite(path=ARTHUR_SPRITE_PATH, x=89, y=42, width=18, height=ARTHUR_SPRITE_HEIGHT)
-ARTHUR_SPRITE_WALKING_R4: Sprite = Sprite(path=ARTHUR_SPRITE_PATH, x=110, y=42, width=23, height=ARTHUR_SPRITE_HEIGHT)
+ARTHUR_SPRITE_WALKING_R1: Sprite = Sprite(path=ARTHUR_SPRITE_PATH, x=41, y=42, width=22, height=32)
+ARTHUR_SPRITE_WALKING_R2: Sprite = Sprite(path=ARTHUR_SPRITE_PATH, x=67, y=42, width=18, height=32)
+ARTHUR_SPRITE_WALKING_R3: Sprite = Sprite(path=ARTHUR_SPRITE_PATH, x=89, y=42, width=18, height=32)
+ARTHUR_SPRITE_WALKING_R4: Sprite = Sprite(path=ARTHUR_SPRITE_PATH, x=110, y=42, width=23, height=32)
 
-ARTHUR_SPRITE_WALKING_L1: Sprite = Sprite(path=ARTHUR_SPRITE_PATH, x=449, y=42, width=22, height=ARTHUR_SPRITE_HEIGHT)
-ARTHUR_SPRITE_WALKING_L2: Sprite = Sprite(path=ARTHUR_SPRITE_PATH, x=427, y=42, width=18, height=ARTHUR_SPRITE_HEIGHT)
-ARTHUR_SPRITE_WALKING_L3: Sprite = Sprite(path=ARTHUR_SPRITE_PATH, x=405, y=42, width=18, height=ARTHUR_SPRITE_HEIGHT)
-ARTHUR_SPRITE_WALKING_L4: Sprite = Sprite(path=ARTHUR_SPRITE_PATH, x=379, y=42, width=23, height=ARTHUR_SPRITE_HEIGHT)
+ARTHUR_SPRITE_WALKING_L1: Sprite = Sprite(path=ARTHUR_SPRITE_PATH, x=449, y=42, width=22, height=32)
+ARTHUR_SPRITE_WALKING_L2: Sprite = Sprite(path=ARTHUR_SPRITE_PATH, x=427, y=42, width=18, height=32)
+ARTHUR_SPRITE_WALKING_L3: Sprite = Sprite(path=ARTHUR_SPRITE_PATH, x=405, y=42, width=18, height=32)
+ARTHUR_SPRITE_WALKING_L4: Sprite = Sprite(path=ARTHUR_SPRITE_PATH, x=379, y=42, width=23, height=32)
 
 # JUMPING
-ARTHUR_SPRITE_JUMPING_R1: Sprite = Sprite(path=ARTHUR_SPRITE_PATH, x=144, y=29, width=32, height=ARTHUR_SPRITE_HEIGHT)
-ARTHUR_SPRITE_JUMPING_R2: Sprite = Sprite(path=ARTHUR_SPRITE_PATH, x=181, y=29, width=26, height=ARTHUR_SPRITE_HEIGHT)
+ARTHUR_SPRITE_JUMPING_R1: Sprite = Sprite(path=ARTHUR_SPRITE_PATH, x=144, y=29, width=32, height=32)
+ARTHUR_SPRITE_JUMPING_R2: Sprite = Sprite(path=ARTHUR_SPRITE_PATH, x=181, y=29, width=26, height=32)
 
-ARTHUR_SPRITE_JUMPING_L1: Sprite = Sprite(path=ARTHUR_SPRITE_PATH, x=336, y=29, width=32, height=ARTHUR_SPRITE_HEIGHT)
-ARTHUR_SPRITE_JUMPING_L2: Sprite = Sprite(path=ARTHUR_SPRITE_PATH, x=305, y=29, width=26, height=ARTHUR_SPRITE_HEIGHT)
+ARTHUR_SPRITE_JUMPING_L1: Sprite = Sprite(path=ARTHUR_SPRITE_PATH, x=336, y=29, width=32, height=32)
+ARTHUR_SPRITE_JUMPING_L2: Sprite = Sprite(path=ARTHUR_SPRITE_PATH, x=305, y=29, width=26, height=32)
 
 # CROUCHING
 ARTHUR_SPRITE_CROUCHING_R: Sprite = Sprite(path=ARTHUR_SPRITE_PATH, x=224, y=52, width=21, height=22)
@@ -60,18 +55,6 @@ class Arthur(Actor):
         jump_speed: float = 10.0,
         health: int | float = 100
     ) -> None:
-        global ARTHUR_SPRITE_IDLE_R, ARTHUR_SPRITE_IDLE_L
-
-        global ARTHUR_SPRITE_WALKING_R1, ARTHUR_SPRITE_WALKING_R2, ARTHUR_SPRITE_WALKING_R3, ARTHUR_SPRITE_WALKING_R4
-        global ARTHUR_SPRITE_WALKING_L1, ARTHUR_SPRITE_WALKING_L2, ARTHUR_SPRITE_WALKING_L3, ARTHUR_SPRITE_WALKING_L4
-
-        global ARTHUR_SPRITE_JUMPING_R1, ARTHUR_SPRITE_JUMPING_R2
-        global ARTHUR_SPRITE_JUMPING_L1, ARTHUR_SPRITE_JUMPING_L2
-
-        global ARTHUR_SPRITE_CROUCHING_R, ARTHUR_SPRITE_CROUCHING_L
-
-        global ARTHUR_SPRITE_CLIMBING_R, ARTHUR_SPRITE_CLIMBING_L
-
         self.name = name
         
         self.x = x
@@ -88,6 +71,8 @@ class Arthur(Actor):
         self.y_step = 0
         
         self.health = health
+        self.invincibility_countdown = 0
+        self.invincibility_time = 60
         
         self.state = State(action=Action.WALKING, direction=Direction.RIGHT)
         self.sprite_cycle_counter = 0
@@ -99,15 +84,29 @@ class Arthur(Actor):
 
         # Sprites
         self.sprites = SpriteCollection()
+        self.__init_sprites()
+
+    def __init_sprites(self) -> None:
+        global ARTHUR_SPRITE_IDLE_R, ARTHUR_SPRITE_IDLE_L
+        global ARTHUR_SPRITE_WALKING_R1, ARTHUR_SPRITE_WALKING_R2, ARTHUR_SPRITE_WALKING_R3, ARTHUR_SPRITE_WALKING_R4
+        global ARTHUR_SPRITE_WALKING_L1, ARTHUR_SPRITE_WALKING_L2, ARTHUR_SPRITE_WALKING_L3, ARTHUR_SPRITE_WALKING_L4
+        global ARTHUR_SPRITE_JUMPING_R1, ARTHUR_SPRITE_JUMPING_R2
+        global ARTHUR_SPRITE_JUMPING_L1, ARTHUR_SPRITE_JUMPING_L2
+        global ARTHUR_SPRITE_CROUCHING_R, ARTHUR_SPRITE_CROUCHING_L
+        global ARTHUR_SPRITE_CLIMBING_R, ARTHUR_SPRITE_CLIMBING_L
 
         self.sprites[Action.IDLE, Direction.RIGHT] = [ARTHUR_SPRITE_IDLE_R]
         self.sprites[Action.IDLE, Direction.LEFT] = [ARTHUR_SPRITE_IDLE_L]
 
-        self.sprites[Action.WALKING, Direction.RIGHT] = [ARTHUR_SPRITE_WALKING_R1, ARTHUR_SPRITE_WALKING_R2, ARTHUR_SPRITE_WALKING_R3, ARTHUR_SPRITE_WALKING_R4] + [ARTHUR_SPRITE_WALKING_R3, ARTHUR_SPRITE_WALKING_R2]
-        self.sprites[Action.WALKING, Direction.LEFT] = [ARTHUR_SPRITE_WALKING_L1, ARTHUR_SPRITE_WALKING_L2, ARTHUR_SPRITE_WALKING_L3, ARTHUR_SPRITE_WALKING_L4] + [ARTHUR_SPRITE_WALKING_L3, ARTHUR_SPRITE_WALKING_L2]
+        self.sprites[Action.WALKING, Direction.RIGHT] = [ARTHUR_SPRITE_WALKING_R1, ARTHUR_SPRITE_WALKING_R2,
+                                                         ARTHUR_SPRITE_WALKING_R3, ARTHUR_SPRITE_WALKING_R4] + [
+                                                            ARTHUR_SPRITE_WALKING_R3, ARTHUR_SPRITE_WALKING_R2]
+        self.sprites[Action.WALKING, Direction.LEFT] = [ARTHUR_SPRITE_WALKING_L1, ARTHUR_SPRITE_WALKING_L2,
+                                                        ARTHUR_SPRITE_WALKING_L3, ARTHUR_SPRITE_WALKING_L4] + [
+                                                           ARTHUR_SPRITE_WALKING_L3, ARTHUR_SPRITE_WALKING_L2]
 
-        self.sprites[Action.JUMPING, Direction.RIGHT] = [ARTHUR_SPRITE_JUMPING_R1]*3 + [ARTHUR_SPRITE_JUMPING_R2]
-        self.sprites[Action.JUMPING, Direction.LEFT] = [ARTHUR_SPRITE_JUMPING_L1]*3 + [ARTHUR_SPRITE_JUMPING_L2]
+        self.sprites[Action.JUMPING, Direction.RIGHT] = [ARTHUR_SPRITE_JUMPING_R1] * 3 + [ARTHUR_SPRITE_JUMPING_R2]
+        self.sprites[Action.JUMPING, Direction.LEFT] = [ARTHUR_SPRITE_JUMPING_L1] * 3 + [ARTHUR_SPRITE_JUMPING_L2]
 
         self.sprites[Action.CROUCHING, Direction.RIGHT] = [ARTHUR_SPRITE_CROUCHING_R]
         self.sprites[Action.CROUCHING, Direction.LEFT] = [ARTHUR_SPRITE_CROUCHING_L]
@@ -217,6 +216,26 @@ class Arthur(Actor):
         if not isinstance(value, (int, float)):
             raise TypeError("health must be an int or float")
         self.__health: float = max(0.0, min(float(value), 100.0))
+
+    @property
+    def invincibility_countdown(self) -> int:
+        return self.__invincibility
+    @invincibility_countdown.setter
+    def invincibility_countdown(self, value: int):
+        if not isinstance(value, int):
+            raise TypeError("invincibility must be an int")
+        self.__invincibility: int = value if value > 0 else 0
+    @property
+    def invincibility(self) -> bool:
+        return self.invincibility_countdown > 0
+    @property
+    def invincibility_time(self) -> int:
+        return self.__invincibility_time
+    @invincibility_time.setter
+    def invincibility_time(self, value: int):
+        if not isinstance(value, (int, float)):
+            raise TypeError("invincibility_time must be an int or float")
+        self.__invincibility_time: int = int(value) if int(value) > 0 else 0
     
     @property
     def state(self) -> State:
@@ -299,27 +318,25 @@ class Arthur(Actor):
 
     def move(self, arena: "Game") -> None:
         keys: list[str] = arena.current_keys()
-        actors: list[Actor] = arena.actors()
+
+        self.invincibility_countdown -= 1
 
         if self.throw_cooldown > 0:
             self.throw_cooldown -= 1
 
-        # --- LANCIO FIACCOLA ---
+        # --- THROW TORCH ---
         if "1" in keys and self.throw_cooldown == 0 and not self.laddered:
             offset_x = 10 if self.state.direction == Direction.RIGHT else -10
             spawn_x = self.x + (self.width // 2) + offset_x
             spawn_y = self.y + self.height * 0.1
 
             torch = Torch(x=spawn_x, y=spawn_y, direction=self.state.direction)
-            try:
-                arena.spawn(torch)
-            except Exception:
-                pass
+            if hasattr(arena, "spawn"): arena.spawn(torch)
 
             self.throw_cooldown = 10
 
 
-        # --- VERTICALE ---
+        # --- VERTICAL ---
         can_jump = self.grounded
 
         if "ArrowUp" in keys and can_jump and not self.laddered:
@@ -337,7 +354,7 @@ class Arthur(Actor):
             self.y += self.y_step
 
 
-        # --- ORIZZONTALE ---
+        # --- HORIZONTAL ---
         self.x_step = 0.0
         if "ArrowLeft" in keys and self.state.action not in (Action.CROUCHING,):
             self.x_step = -self.speed
@@ -358,6 +375,9 @@ class Arthur(Actor):
             return None
 
         list_sprites = self.sprites[self.state.action, self.state.direction]
+        for sprite in list_sprites:
+            sprite.blinking = self.invincibility_countdown > 0
+
 
         match self.state.action:
             case Action.IDLE: return self._locked_looping_sprite_selection(list_sprites)
@@ -382,7 +402,9 @@ class Arthur(Actor):
         ]
 
     def hit(self, damage: float) -> None:
-        self.health -= damage
+        if self.invincibility_countdown <= 0 < damage:
+            self.health -= damage
+            self.invincibility_countdown = self.invincibility_time
     # ^^^^^^^^ ^^^^^^^^ ^^^^^^^^ ^^^^^^^^
     # INTERFACE IMPLEMENTATION 
     # ======== ======== ======== ========
@@ -412,8 +434,15 @@ class Arthur(Actor):
         ladder_width, ladder_height = ladder_size
         inside_ladder: bool = ladder_y - self.height*0.85 < self.y < ladder_y + ladder_height
 
-        self.laddered = True
-        self.y_step = 0.0
+        on_bottom = self.y + self.height >= ladder_y + ladder_height
+        on_top = self.y + self.height <= ladder_y
+
+        if on_bottom or on_top:
+            return
+
+        if "ArrowUp" in keys or "ArrowDown" in keys or not on_bottom:
+            self.laddered = True
+            self.y_step = 0.0
 
         if "ArrowUp" in keys:
             self.y -= 2
@@ -424,7 +453,6 @@ class Arthur(Actor):
             self._set_state_action(Action.CLIMBING, reset=False)
         elif inside_ladder:
             self._set_state_action(Action.CLIMBING_POSE)
-
 
     def not_on_ladder_collision(self) -> None:
         self.laddered = False
@@ -452,7 +480,7 @@ class Arthur(Actor):
         if (self.state.action, self.state.direction) in self.sprites.__iter__():
             self.y = self.y + self.height - self.sprites[self.state.action, self.state.direction][0].height
 
-            self.width = max(self.width, min(self.sprites[self.state.action, self.state.direction][0].width, 28))
+            self.width = 21 #max(self.width, min(self.sprites[self.state.action, self.state.direction][0].width, 28))
             self.height = self.sprites[self.state.action, self.state.direction][0].height
 
             if self.laddered:

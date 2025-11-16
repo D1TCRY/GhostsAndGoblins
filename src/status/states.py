@@ -2,18 +2,24 @@ from enum import Enum, auto
 
 
 class Action(Enum):
+    BIG = auto()
+    SMALL = auto()
+
     LOCKED = auto()
     IDLE = auto()
-    WALKING = auto()
-    RUNNING = auto()
-    JUMPING = auto()
-    ATTACKING = auto()
-    CROUCHING = auto()
-    EMERGING = auto()
-    IMMERSING = auto()
     DEAD = auto()
+
+    WALKING = auto()
+    JUMPING = auto()
+    CROUCHING = auto()
     CLIMBING = auto()
     CLIMBING_POSE = auto()
+
+    ATTACKING = auto()
+
+    EMERGING = auto()
+    IMMERSING = auto()
+
     SPAWNING = auto()
 
     def __str__(self) -> str:

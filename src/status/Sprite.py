@@ -3,15 +3,16 @@ from urllib.parse import urlparse
 from typing import Iterator
 
 class Sprite:
-    def __init__(self, path: str | pathlib.Path, x: int, y: int, width: int, height: int) -> None:
+    def __init__(self, path: str | pathlib.Path, x: int, y: int, width: int, height: int, blinking: bool = False) -> None:
         self.path = path
         self.x = x
         self.y = y
         self.width = width
         self.height = height
+        self.blinking = blinking
 
 
-    # ======== CLASSMETHODS ========
+    # ======== CLASS-METHODS ========
     @classmethod
     def init_from_dict(cls, data: dict[str, str | int]):
         return cls(
@@ -20,6 +21,7 @@ class Sprite:
             y=int(data["y"]),   # type: ignore
             width=int(data["width"]),   # type: ignore
             height=int(data["height"]), # type: ignore
+            blinking=bool(data.get("blinking", False))
         )
 
 
@@ -32,7 +34,8 @@ class Sprite:
             "width": self.width,
             "height": self.height,
             "pos": self.pos,
-            "size": self.size
+            "size": self.size,
+            "blinking": self.blinking
         })
 
     def __repr__(self) -> str:
@@ -40,7 +43,8 @@ class Sprite:
             f"{self.__class__.__name__}("
             f"path={repr(str(self.path) if isinstance(self.path, pathlib.Path) else self.path)}, "
             f"x={repr(self.x)}, y={repr(self.y)}, "
-            f"width={repr(self.width)}, height={repr(self.height)})"
+            f"width={repr(self.width)}, height={repr(self.height)}, "
+            f"blinking={repr(self.blinking)})"
         )
 
     def __iter__(self) -> Iterator[tuple[str, object]]:
@@ -51,7 +55,8 @@ class Sprite:
             "width": self.width,
             "height": self.height,
             "pos": self.pos,
-            "size": self.size
+            "size": self.size,
+            "blinking": self.blinking
         }
         return iter(data.items())
 
@@ -69,9 +74,9 @@ class Sprite:
         if isinstance(new, str):
             parsed = urlparse(new)
             if parsed.scheme in {"http", "https", "ftp", "s3"} and (parsed.netloc or parsed.path):
-                self.__path = new  # URL: mantieni come stringa
+                self.__path = new  # url - keep as string
             else:
-                self.__path = pathlib.Path(new)  # file path
+                self.__path = pathlib.Path(new)  # file - convert to Path
             return
         raise TypeError("path must be a str or pathlib.Path")
 
@@ -112,7 +117,7 @@ class Sprite:
         self.__height: int = new
 
 
-    # ======== DERIVATI ========
+    # ======== DERIVATIVES ========
     @property
     def pos(self) -> tuple[int, int]:
         return self.x, self.y

@@ -20,11 +20,29 @@ class Weapon(Actor):
     def reset_sprite_cycle_counter(self) -> int:
         self.sprite_cycle_counter = 0
         return self.sprite_cycle_counter
-
     @property
     def increment_sprite_cycle_counter(self) -> int:
         self.sprite_cycle_counter += 1
         return self.sprite_cycle_counter
+
+    @property
+    def sprite_cycle_counter(self) -> int:
+        return self.__sprite_cycle_counter
+    @sprite_cycle_counter.setter
+    def sprite_cycle_counter(self, value: int) -> None:
+        if not isinstance(value, int):
+            raise TypeError("sprite cycle counter must be an integer")
+        self.__sprite_cycle_counter: int = value
+
+    @property
+    def sprite_cycle_speed(self) -> int:
+        return self.__sprite_cycle_speed
+    @sprite_cycle_speed.setter
+    def sprite_cycle_speed(self, value: int) -> None:
+        if not isinstance(value, int):
+            raise TypeError("sprite cycle speed must be an integer")
+        self.__sprite_cycle_speed: int = value
+
 
     @property
     def damage(self) -> int:
