@@ -1,0 +1,99 @@
+{
+  "camera_width": 430,
+  "camera_height": 230,
+  "scale": 3,
+  "fps": 30,
+  "Arthur": {
+    "defaults": {
+      "width": 21,
+      "height": 32,
+      "speed": 5,
+      "gravity": 0.7,
+      "jump_speed": 10.0,
+      "health": 100,
+      "max_health": 100,
+      "invincibility_time": 60,
+      "sprite_cycle_speed": 4,
+      "default_height": 32,
+      "crouched_height": 23,
+      "default_width": 21,
+      "laddered_width": 19
+    }
+  },
+  "Zombie": {
+    "defaults": {
+      "health": 70,
+      "max_health": 70,
+      "width": 21,
+      "height": 32,
+      "speed": 1.0,
+      "gravity": 0.7,
+      "min_walk_distance": 150,
+      "max_walk_distance": 300,
+      "sprite_cycle_speed": 6,
+      "direction": "RIGHT",
+      "damage": 30,
+      "attack_interval": 50,
+      "min_dist_x": 70,
+      "max_dist_x": 200,
+      "spawn_width": 21,
+      "spawn_height": 32,
+      "spawn_chance": 0.005
+    }
+  },
+  "Plant": {
+    "defaults": {
+      "health": 40,
+      "max_health": 40,
+      "damage": 10,
+      "damage_interval": 60,
+      "width": 21,
+      "height": 32,
+      "direction": "RIGHT",
+      "attack_interval": 180,
+      "projectile_speed": 2.0,
+      "projectile_damage": 20.0,
+      "sprite_cycle_speed": 6,
+      "min_dist_x": 100,
+      "max_dist_x": 150,
+      "spawn_width": 21,
+      "spawn_height": 32,
+      "spawn_chance": 0.005
+    }
+  },
+  "EyeBall": {
+    "defaults": {
+      "speed": 2.0,
+      "damage": 10,
+      "max_travel_distance": 400.0,
+      "sprite_cycle_speed": 6,
+      "direction": "RIGHT",
+      "width": 8
+    }
+  },
+  "Torch": {
+    "defaults": {
+      "damage": 50,
+      "speed": 7.0,
+      "gravity": 0.7,
+      "sprite_cycle_speed": 4,
+      "action": "ATTACKING",
+      "direction": "RIGHT"
+    }
+  },
+  "Flame": {
+    "defaults": {
+      "damage": 1,
+      "life_time": 60,
+      "sprite_cycle_speed": 6
+    }
+  },
+  "Door": {
+    "defaults": {
+      "name": "Door",
+      "speed": 3.0,
+      "sprite_cycle_speed": 6,
+      "passage_delay": 60
+    }
+  }
+}
