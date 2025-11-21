@@ -21,6 +21,7 @@ class ArthurTest(unittest.TestCase):
             jump_speed=10.0,
             health=80,
             max_health=100,
+            throw_interval=10,
         )
 
     # ======== INIT ========

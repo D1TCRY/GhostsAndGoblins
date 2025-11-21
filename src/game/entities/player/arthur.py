@@ -1,3 +1,4 @@
+from email.quoprimime import header_length
 from typing import TYPE_CHECKING
 import pathlib
 
@@ -78,6 +79,7 @@ class Arthur(Actor):
         jump_speed: float | None = None,
         health: int | float | None = None,
         max_health: int | float | None = None,
+        throw_interval: int | None = None
     ) -> None:
         settings: dict = read_settings()
         defaults: dict = settings.get("Arthur", {}).get("defaults", {})
@@ -109,6 +111,7 @@ class Arthur(Actor):
         self.grounded = False
         self.laddered = False
         self.throw_cooldown = 0
+        self.throw_interval = throw_interval if throw_interval is not None else defaults.get("throw_interval", 10)
 
         # SPRITES
         self.sprites = SpriteCollection()
@@ -220,7 +223,7 @@ class Arthur(Actor):
             torch = Torch(x=spawn_x, y=spawn_y, direction=self.state.direction)
             if hasattr(arena, "spawn"): arena.spawn(torch)
 
-            self.throw_cooldown = 10
+            self.throw_cooldown = self.throw_interval
 
             if self.state.action in (Action.IDLE, Action.WALKING, Action.JUMPING):
                 self._priority_action = Action.ATTACKING
@@ -311,8 +314,7 @@ class Arthur(Actor):
     def gui(self) -> list[GUIComponent]:
         """Restituisce una lista di GUIComponent da visualizzare nella GUI."""
 
-        return [
-            Bar(
+        health_bar: GUIComponent = Bar(
                 name_id="health_bar",
                 x=3, y=3, padding=1,
                 text="Health: {value}",
@@ -320,7 +322,28 @@ class Arthur(Actor):
                 value=lambda: self.health,
                 fixed=True,
             )
-        ]
+
+        invincibility_bar: GUIComponent = Bar(
+                name_id="invincibility_bar",
+                x=3, y=20+14+3, padding=1,
+                width=72, height=14,
+                background_color=(64, 64, 64), bar_color=(156, 156, 156),
+                text="Invincibility", text_size=10, text_color=(248, 248, 248),
+                max_value=self.invincibility_time, value=self.invincibility_countdown,
+                fixed=True
+            )
+
+        weapon_bar: GUIComponent = Bar(
+            name_id="weapon_bar",
+            x=3, y=20, padding=1,
+            width=72, height=14,
+            text="Attack [1]", text_size=10, text_color=(248, 248, 248),
+            max_value=self.throw_interval, value=self.throw_interval - self.throw_cooldown,
+            background_color=(8, 16, 116), bar_color=(96, 128, 248),
+            fixed=True
+        )
+
+        return [health_bar] + ([invincibility_bar] if self.invincibility_countdown > 0 else []) + ([weapon_bar])
 
     def hit(self, damage: float) -> None:
         """Applica un danno ad Arthur tenendo conto dell invincibilita.
@@ -687,6 +710,15 @@ class Arthur(Actor):
         if not isinstance(value, int):
             raise TypeError("throw_cooldown must be an int")
         self.__throw_cooldown: int = int(value)
+
+    @property
+    def throw_interval(self) -> int:
+        return self.__throw_interval
+    @throw_interval.setter
+    def throw_interval(self, value: int):
+        if not isinstance(value, int):
+            raise TypeError("throw_interval must be an int")
+        self.__throw_interval: int = int(value)
 
     def reset_sprite_cycle_counter(self) -> int:
         self.sprite_cycle_counter = 0

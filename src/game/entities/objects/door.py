@@ -1,6 +1,8 @@
 from typing import TYPE_CHECKING
 import pathlib
 
+from ...gui import GUIComponent, Bar
+
 # CORE
 if TYPE_CHECKING: from ...core import Game
 from ...core.file_management import read_settings
@@ -10,6 +12,11 @@ from ..actor import Actor
 
 # STATE
 from ...state import Sprite, EntityState, SpriteCollection, Action, Direction
+
+
+CAMERA_W = read_settings().get("camera_width", 430)
+CAMERA_H = read_settings().get("camera_height", 230)
+
 
 DOOR_SPRITE_PATH: pathlib.Path = pathlib.Path(__file__).parent.parent.parent.parent / "data" / "textures" / "ghosts-goblins-bg.png"
 
@@ -114,6 +121,22 @@ class Door(Actor):
             case Action.DEAD: return None
             case Action.OPEN | Action.CLOSE: return self._locked_looping_sprite_selection(sprites)
             case _: return None
+
+    @property
+    def gui(self) -> list[GUIComponent]:
+        global CAMERA_W, CAMERA_H
+
+        door_passage: GUIComponent = Bar(
+            name_id="door_passage",
+            x=CAMERA_W/2 - (72/2), y=3, padding=1,
+            width=72, height=14,
+            text="Crossing...", text_size=10, text_color=(255, 255, 255),
+            max_value=self.passage_delay, value=self.door_timer,
+            background_color=(116, 116, 8), bar_color=(224, 224, 96),
+            fixed=True
+        )
+
+        return [door_passage] if self.door_timer > 0 else []
 
 
     # ======== HELPER METHODS ========

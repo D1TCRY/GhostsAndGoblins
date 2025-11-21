@@ -17,7 +17,8 @@
       "default_height": 32,
       "crouched_height": 23,
       "default_width": 21,
-      "laddered_width": 19
+      "laddered_width": 19,
+      "throw_interval": 20
     }
   },
   "Zombie": {
