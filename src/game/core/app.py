@@ -164,6 +164,12 @@ class App(object):
             GraveStone(x=1522-2, y=186-10, width=16, height=16, damage=0, name="GraveStone 7"),
             GraveStone(x=866-2, y=106-10, width=16, height=16, damage=0, name="GraveStone 8"),
         ])
+        spawn_queue.extend([
+            GraveStone(x=418 - 2, y=188 - 10, width=17, height=14, damage=0, name="GraveStone 9"),
+            GraveStone(x=770 - 2, y=108 - 10, width=17, height=14, damage=0, name="GraveStone 10"),
+            GraveStone(x=962 - 2, y=108 - 10, width=17, height=14, damage=0, name="GraveStone 11"),
+            GraveStone(x=1266 - 2, y=188 - 10, width=17, height=14, damage=0, name="GraveStone 12"),
+        ])
 
         # Door
         spawn_queue.extend([
