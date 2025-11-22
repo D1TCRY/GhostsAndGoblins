@@ -1,4 +1,3 @@
-_386276 - Cecchelani Diego_
 # Ghosts and Goblins – Clone 2D
 
 Progetto di gioco 2D ispirato a **Ghosts 'n Goblins**, realizzato come esercitazione per il primo anno del corso di **Ingegneria delle Tecnologie Informatiche** (Università di Parma).
@@ -404,3 +403,7 @@ Dalla root del progetto:
 ```bash
 python -m unittest discover -s tests -p "test_*.py"
 ```
+
+## Autore
+- **Matricola**: 386276
+- **Cognome/Nome**: Cecchelani Diego
