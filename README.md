@@ -247,7 +247,7 @@ tests/
 ---
 
 ## Dati e configurazione
-I parametri di gioco sono caricati tramite `file_management.read_settings()`, da un file di configurazione (es. JSON), che contiene:
+I parametri di gioco sono caricati tramite `file_management.read_settings()`, da un file di configurazione JSON, che contiene:
 * Parametri globali:
   * `camera_width`, `camera_height`
   * `scale`
