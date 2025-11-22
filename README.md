@@ -1,4 +1,4 @@
-# Ghosts and Goblins – Clone 2D
+# Ghosts And Goblins – Clone 2D
 
 Progetto di gioco 2D ispirato a **Ghosts 'n Goblins**, realizzato come esercitazione per il primo anno del corso di **Ingegneria delle Tecnologie Informatiche** (Università di Parma).
 
