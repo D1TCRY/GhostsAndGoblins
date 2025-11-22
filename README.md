@@ -101,41 +101,95 @@ A schermo sono visibili:
 
 ## Struttura del progetto
 
-La struttura semplificata è la seguente:
+La struttura è la seguente:
 
 ```text
-data/
-  textures/ ...
-  settings.json
-src/
-  game/
-    core/
-      app.py
-      game.py
-      camera.py
-      graphical_interface.py
-      menu_manager.py
-      file_management.py
-    entities/
-      actor.py
-      player/arthur.py
-      enemies/zombie.py, plant.py, ...
-      objects/platform.py, ladder.py, gravestone.py, flame.py, door.py, ...
-      weapons/torch.py, eyeball.py, ...
-    gui/
-      gui_component.py
-      button.py
-      bar.py
-      text.py
-      color.py
-    state/
-      sprite.py
-      sprite_collection.py
-      entity_state.py
-      states.py
-  main.py
-tests/
-  ...
+└── GhostsAndGoblins/
+    ├── req.txt
+    ├── run.bat
+    ├── run.vbs
+    ├── src/
+    │   ├── __init__.py
+    │   ├── data/
+    │   │   ├── settings.json
+    │   │   └── textures/
+    │   │       ├── ghosts-goblins-bg.png
+    │   │       ├── ghosts-goblins-bright.png
+    │   │       ├── ghosts-goblins.png
+    │   │       └── main-menu-bg-430.png
+    │   ├── g2d_lib/
+    │   │   ├── __init__.py
+    │   │   └── g2d.py
+    │   ├── game/
+    │   │   ├── __init__.py
+    │   │   ├── core/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── app.py
+    │   │   │   ├── camera.py
+    │   │   │   ├── file_management.py
+    │   │   │   ├── game.py
+    │   │   │   ├── graphical_interface.py
+    │   │   │   └── menu_manager.py
+    │   │   ├── entities/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── actor.py
+    │   │   │   ├── enemies/
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── plant.py
+    │   │   │   │   └── zombie.py
+    │   │   │   ├── objects/
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── door.py
+    │   │   │   │   ├── flame.py
+    │   │   │   │   ├── grave_stone.py
+    │   │   │   │   ├── ladder.py
+    │   │   │   │   └── platform.py
+    │   │   │   ├── player/
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   └── arthur.py
+    │   │   │   └── weapons/
+    │   │   │       ├── __init__.py
+    │   │   │       ├── eye_ball.py
+    │   │   │       ├── torch.py
+    │   │   │       └── weapon.py
+    │   │   ├── gui/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── bar.py
+    │   │   │   ├── button.py
+    │   │   │   ├── color.py
+    │   │   │   ├── gui_component.py
+    │   │   │   └── text.py
+    │   │   └── state/
+    │   │       ├── __init__.py
+    │   │       ├── entity_state.py
+    │   │       ├── sprite.py
+    │   │       ├── sprite_collection.py
+    │   │       └── states.py
+    │   └── main.py
+    ├── test.bat
+    └── tests/
+        └── game/
+            ├── __init__.py
+            ├── core/
+            │   ├── __init__.py
+            │   ├── test_game.py
+            │   └── test_graphical_interface.py
+            └── entities/
+                ├── __init__.py
+                ├── enemies/
+                │   ├── __init__.py
+                │   ├── test_plant.py
+                │   └── test_zombie.py
+                ├── objects/
+                │   ├── __init__.py
+                │   └── test_platform.py
+                ├── player/
+                │   ├── __init__.py
+                │   └── test_arthur.py
+                └── weapons/
+                    ├── __init__.py
+                    ├── test_eye_ball.py
+                    └── test_torch.py
 ```
 
 ### Core
