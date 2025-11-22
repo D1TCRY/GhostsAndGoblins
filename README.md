@@ -52,14 +52,6 @@ Dalla cartella principale del progetto:
 python -m src.main
 ```
 
-oppure, se il file di avvio è diverso, eseguire il modulo che richiama la funzione:
-
-La funzione di ingresso del gioco è infatti `src.game.core.app.main()`, che:
-
-* crea un oggetto `App`,
-* inizializza il canvas tramite `init_canvas(...)`,
-* avvia il loop principale di `g2d`.
-
 ---
 
 ## Comandi di gioco
