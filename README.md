@@ -300,7 +300,7 @@ Gli handler gestiscono logiche specifiche, ad esempio:
 * All’inizio, `spawn_queue` è riempita con:
   * Arthur,
   * piattaforme,
-  * tombini, scale, acqua, porta, ecc.
+  * tombe, scale, acqua, porta, ecc.
 * `Game.empty_queue()` spawna tutti gli attori, assicurandosi che Arthur sia in posizione 0.
 * Ad ogni `tick`, con una certa probabilità (dal file di configurazione), vengono generati:
   * `Zombie` → tramite `Zombie.auto_init(player, game)` che:
